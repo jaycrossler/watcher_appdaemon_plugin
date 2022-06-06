@@ -2,9 +2,10 @@ import os
 
 import appdaemon.plugins.hass.hassapi as hass
 import json
-import posixpath
+
 import base64
 from PIL import Image, UnidentifiedImageError  # NOTE: Make sure AppDaemon config is set to import 'py3-pillow' as a system package
+from string_helpers import *
 
 # -----------------------------------------------
 # Listen for multiple types of Action messages,
@@ -17,162 +18,7 @@ PUBLISH_TOPIC = "homeassistant/camera_intents/description"
 SAVE_BLUEIRIS_LOCATION = "/config/www/appdaemon_intents/"
 NOTIFICATIONS_BEFORE_ALLOWING_DUPLICATES = 10
 
-# TODO: Move these to external settings
 # TODO: Move these to be within the main class
-
-
-def extract_face_predictions(analysis):
-    predictions = []
-    if analysis:
-        for bucket in analysis:
-            if 'api' in bucket and bucket['api'] == 'faces':
-                # find the 'faces' api if it exists
-                if 'found' in bucket:
-                    results = bucket['found']
-                    if 'success' in results and results['success'] and 'predictions' in results:
-                        # Find the 'predictions' if they exist
-                        predictions = results['predictions']
-                        break
-    return predictions
-
-
-def get_face_contents_from_analysis(analysis):
-    _results = extract_face_predictions(analysis)
-    people = []
-
-    # Extract face titles from results
-    for face in _results:
-        if 'userid' in face:
-            face_title = face['userid']
-            name = substring_before(face_title, "_")
-            if name.lower() != "unknown":
-                # If the name is not 'unknown' add it to the list of people if unique
-                if name.title() not in people:
-                    people.append(name.title())
-    return people, _results
-
-
-def get_image_contents_from_memo(memo_from_deepstack, faces_list):
-    matches = memo_from_deepstack.split(",")
-
-    people = 0
-    dogs = 0
-    cars = 0
-    _msg = []
-    for match in matches:
-        m_pieces = match.split(":")
-        tag = m_pieces[0]
-        # confidence = m_pieces[1]
-        if tag == "person":
-            people += 1
-        elif tag == "dog":
-            dogs += 1
-        elif tag == "car":
-            cars += 1
-    #                    _msg = _msg.append["{} ({} confidence)".format(tag, confidence)]
-
-    if people == 1:
-        text = "A person"
-        if faces_list and len(faces_list):
-            text = faces_list[0]
-        _msg.append(text)
-    elif people > 1:
-        text = "{} people".format(people)
-        if faces_list and len(faces_list):
-            text = ", ".join(faces_list)  # Add face names
-        _msg.append(text)
-
-    if dogs == 1:
-        _msg.append("A dog")
-    elif dogs > 1:
-        _msg.append("{} dogs".format(dogs))
-
-    if cars == 1:
-        _msg.append("A car")
-    elif cars > 1:
-        _msg.append("{} cars".format(cars))
-
-    message = ", and ".join(_msg).capitalize()
-    return message, people + dogs + cars
-
-
-def get_image_link_from_payload(payload_obj):
-    if 'path' in payload_obj:
-        return posixpath.join(SAVE_BLUEIRIS_LOCATION, payload_obj['path'])
-    return ''
-
-
-def get_zone_name_from_camera_and_zone(camera_name, zone_id):
-    zone_name = camera_name
-    zone_shortname = ""
-
-    if camera_name == "TestCam":
-        zone_name = "simulated in the holodeck"
-    elif camera_name == "annke1hd":
-        zone_name = "near the mudroom"
-        zone_shortname = "mudroom"
-    elif camera_name == "annke2hd":
-        zone_name = "in the driveway"
-        zone_shortname = "driveway_front"
-    elif camera_name == "annke3hd":
-        zone_name = "by the front porch"
-        zone_shortname = "front_porch"
-    elif camera_name == "annke4hd":
-        zone_name = "on the deck"
-        zone_shortname = "deck"
-    elif camera_name == "reolink5hd":
-        zone_name = "in the driveway"
-        zone_shortname = "driveway_side"
-    elif camera_name == "reolink6":
-        zone_shortname = "pavilion"
-        if "A" in zone_id:
-            zone_name = "in the back yard"
-        elif "B" in zone_id:
-            zone_name = "on the patio"
-        elif "C" in zone_id:
-            zone_name = "near the hot tub"
-    elif camera_name == "eufy2":
-        zone_shortname = "basement"
-        zone_name = "in the basement"
-    else:
-        zone_shortname = "unknown"
-        zone_name = "- {} {}".format(camera_name, zone_id)
-
-    return zone_name, zone_shortname
-
-
-def does_needle_match_haystack_topic(needle_string, haystack_string):
-    needle = needle_string.split("/")
-    haystack = haystack_string.split("/")
-
-    # Good solution if equal
-    if needle == haystack:
-        return True
-    if len(needle) < len(haystack):
-        return False
-
-    # Check all subtopics for a match or wildcard match
-    for i in range(len(needle)):
-        s_needle = needle[i]
-        if i < len(haystack):
-            s_haystack = haystack[i]
-        else:
-            return False
-
-        # Handle wildcards
-        if s_haystack == "#":
-            return True
-        if not (s_haystack == "+" or s_haystack == s_needle):
-            return False
-
-    # Tried all steps, and nothing broke the pattern, so return true
-    return True
-
-
-def substring_after(s, deliminator): return s.partition(deliminator)[2]
-
-
-def substring_before(s, deliminator): return s.partition(deliminator)[0]
 
 
 class MqttCameraIntents(hass.Hass):
@@ -254,7 +100,6 @@ class MqttCameraIntents(hass.Hass):
             # Get the zone names from the camera titles
             zone_name, zone_short_name = get_zone_name_from_camera_and_zone(camera_name, zone_id)
             if trigger == "ON":
-                # TODO: Consider saving the image and extracting from JSON to send in phone alerts
                 # If there are any state changes to HA objects, do those now
                 self.set_states_from_zone(camera_name, zone_id, trigger, payload_obj)
 
@@ -275,7 +120,7 @@ class MqttCameraIntents(hass.Hass):
                     message_package = {"message": message, "zone": zone_short_name}
 
                     # Add an image alert URL to the message if one was sent
-                    _image_id = get_image_link_from_payload(payload_obj)
+                    _image_id = add_field_to_path_if_exists(payload_obj, SAVE_BLUEIRIS_LOCATION, 'path')
                     if 'path' in payload_obj:
                         message_package['image'] = "/local/appdaemon_intents/" + payload_obj['path']
 
@@ -314,24 +159,22 @@ class MqttCameraIntents(hass.Hass):
             self.log("Received an alert JSON payload that threw an exception")
             payload_obj = {}
 
-        path = get_image_link_from_payload(payload_obj)
+        path = add_field_to_path_if_exists(payload_obj, SAVE_BLUEIRIS_LOCATION, 'path')
         base64_str = payload_obj['image_b64'] if 'image_b64' in payload_obj else ""
         self.log("Image {} extracted, size {}".format(path, len(base64_str)))
 
         if base64_str and path and len(base64_str) > 1000:
             with open(path, "wb") as fh:
                 fh.write(base64.b64decode(str(base64_str)))
-                # NOTE THIS FILE IS NOT YET BEING USED, should be included with message attachment or have a dashboard
 
             self.log("Saved an image from camera [{}] to {} - size {}".format(camera_name, path, len(base64_str)))
 
             try:
-                # Decode the str and size it smaller
+                # Also create a thumbnail
                 img = Image.open(path)
-                _width, _height = img.size
-                self.log("Image received, size: {}x{} saving to {}".format(_width, _height, path))
-                _new_size = (int(_width/8), int(_height/8))  # TODO: This doesn't seem to be resizing
-                img.save(fp=path)
+                img.thumbnail((120, 120))
+                img.save(fp="thumbnail_{}".format(path))
+                self.log("...Saved a thumbnail also")
 
             except UnidentifiedImageError:
                 self.log("..PIL could not import the included image")
