@@ -1,6 +1,7 @@
 import posixpath
 import json
 
+
 def extract_face_predictions(analysis):
     predictions = []
     if analysis:
@@ -84,28 +85,29 @@ def add_field_to_path_if_exists(payload_obj, source_dir, field, prefix=""):
     return ''
 
 
-def extract_path_and_image_from_mqtt_message(payload, save_loc, camera_name):
+def extract_path_and_image_from_mqtt_message(payload, save_loc, camera_name, b64_field_name='image_b64',
+                                             save_latest_format='latest_{}.jpg', thumbnails_subdir='thumbnails'):
     path = None
     base64_str = None
     error = None
     thumbnail_path = None
 
+    # If it doesn't start with a { assume it's a b64 encoded image. Generate paths and get the image data
     if payload and len(payload) > 1000 and payload[0] != "{":
         # A large image payload was received that isn't JSON.  See if it's a bit64 image
-        path = posixpath.join(save_loc, "latest_{}.jpg".format(camera_name))
-        thumbnail_path = posixpath.join(save_loc, "thumbnails", "latest_{}.jpg".format(camera_name))
+        path = posixpath.join(save_loc, save_latest_format.format(camera_name))
+        thumbnail_path = posixpath.join(save_loc, thumbnails_subdir, save_latest_format.format(camera_name))
         base64_str = payload
 
-    elif payload and 'path' in payload and 'image_b64' in payload:
-        # Likely JSON, extract
+    elif payload and 'path' in payload and b64_field_name in payload:
+        # This is likely JSON, try to extract and use it
         try:
             payload_obj = json.loads(payload)
 
             path = add_field_to_path_if_exists(payload_obj, save_loc, 'path')
-            thumbnail_path = add_field_to_path_if_exists(payload_obj, save_loc, 'path', 'thumbnails')
-            base64_str = payload_obj['image_b64'] if 'image_b64' in payload_obj else ""
+            thumbnail_path = add_field_to_path_if_exists(payload_obj, save_loc, 'path', thumbnails_subdir)
+            base64_str = payload_obj[b64_field_name] if b64_field_name in payload_obj else ""
             # self.log("Image {} extracted, size {}".format(path, len(base64_str)))
-
         except ValueError:
             error = "Received an alert JSON payload that threw an exception"
     else:
@@ -154,6 +156,11 @@ def get_zone_name_from_camera_and_zone(camera_name, zone_id):
 
 
 def does_needle_match_haystack_topic(needle_string, haystack_string):
+    # AppDaemon subscriptions only seem to work with specific topics, no wildcards -
+    #   described in https://buildmedia.readthedocs.org/media/pdf/appdaemon/stable/appdaemon.pdf
+    # This parses through all message topics (the "haystack"), and returns true if a "needle"  matches
+    # Needles can be of the format: "BlueIris/+/Status" or "BlueIris/alerts/+" with + being a wildcard
+
     needle = needle_string.split("/")
     haystack = haystack_string.split("/")
 
@@ -185,3 +192,8 @@ def substring_after(s, deliminator): return s.partition(deliminator)[2]
 
 
 def substring_before(s, deliminator): return s.partition(deliminator)[0]
+
+
+def get_config_var(field, holder, default_val=None):
+    # return an item's value from a dictionary
+    return holder[field] if field in holder else default_val
