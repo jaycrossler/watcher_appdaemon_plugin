@@ -1,5 +1,5 @@
 import posixpath
-
+import json
 
 def extract_face_predictions(analysis):
     predictions = []
@@ -76,10 +76,42 @@ def get_image_contents_from_memo(memo_from_deepstack, faces_list):
     return message, people + dogs + cars
 
 
-def add_field_to_path_if_exists(payload_obj, source_dir, field):
-    if field in payload_obj:
+def add_field_to_path_if_exists(payload_obj, source_dir, field, prefix=""):
+    if prefix and field in payload_obj:
+        return posixpath.join(source_dir, prefix, payload_obj[field])
+    elif field in payload_obj:
         return posixpath.join(source_dir, payload_obj[field])
     return ''
+
+
+def extract_path_and_image_from_mqtt_message(payload, save_loc, camera_name):
+    path = None
+    base64_str = None
+    error = None
+    thumbnail_path = None
+
+    if payload and len(payload) > 1000 and payload[0] != "{":
+        # A large image payload was received that isn't JSON.  See if it's a bit64 image
+        path = posixpath.join(save_loc, "latest_{}.jpg".format(camera_name))
+        thumbnail_path = posixpath.join(save_loc, "thumbnails", "latest_{}.jpg".format(camera_name))
+        base64_str = payload
+
+    elif payload and 'path' in payload and 'image_b64' in payload:
+        # Likely JSON, extract
+        try:
+            payload_obj = json.loads(payload)
+
+            path = add_field_to_path_if_exists(payload_obj, save_loc, 'path')
+            thumbnail_path = add_field_to_path_if_exists(payload_obj, save_loc, 'path', 'thumbnails')
+            base64_str = payload_obj['image_b64'] if 'image_b64' in payload_obj else ""
+            # self.log("Image {} extracted, size {}".format(path, len(base64_str)))
+
+        except ValueError:
+            error = "Received an alert JSON payload that threw an exception"
+    else:
+        error = "Invalid JSON or image data received"
+
+    return base64_str, path, thumbnail_path, error
 
 
 def get_zone_name_from_camera_and_zone(camera_name, zone_id):
