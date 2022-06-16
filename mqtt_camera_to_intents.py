@@ -1,8 +1,6 @@
-import os
-
 import appdaemon.plugins.hass.hassapi as hass
-import json
 from datetime import datetime
+from os.path import exists
 
 import base64
 # NOTE: Make sure AppDaemon config is set to import 'py3-pillow' as an AppDaemon system package
@@ -19,7 +17,6 @@ NOTIFICATIONS_BEFORE_ALLOWING_DUPLICATES = 10
 # TODO: Figure why there are images sometimes sent to the log, maybe one camera just sending an image? Maybe a log obj?
 # TODO: Rename as watcher, add to camera tracking project
 # TODO: Move to Zones
-# TODO: Verify images exist before posting message
 # TODO: Delete old images to save space
 # TODO: Use SenseAI for faces
 # TODO: Add priorities
@@ -32,33 +29,27 @@ class MqttCameraIntents(hass.Hass):
     mqtt = None  # MQTT Object to send/receive messages
 
     # Variables configurable through config settings
-    IMAGE_FIELD_NAME = None
-    DTG_MESSAGE_FORMAT = None
-    SAVE_LATEST_FORMAT = None
-    THUMBNAILS_SUBDIR = None
-    THUMBNAILS_MAX_SIZE = None
-    MQTT_TOPIC_FOR_CAMERA_INTENTS = None
-    MQTT_TOPIC_FOR_CAMERA_ALERT_IMAGES = None
-    PUBLISH_TOPIC_MESSAGE = None
-    PUBLISH_TOPIC_LATEST_IMAGE = None
-    SAVE_BLUEIRIS_LOCATION = None
-    WEB_PATH_TO_IMAGES = None
+    _defaults = {
+        'routing': {
+            'image_field_name': 'image_b64',
+            'dtg_message_format': '%d/%m/%Y %H:%M:%S',
+            'dtg_message_format_short': '%H:%M',
+            'save_latest_format': 'latest_{}.jpg',  # Set to None to not save the latest image
+            'thumbnails_subdir': 'thumbnails',
+            'thumbnail_max_size': 300,
+            'mqtt_topic_for_camera_intents': "BlueIris / + / Status",
+            'mqtt_topic_for_camera_alert_images': "BlueIris/alerts/+",
+            'mqtt_publish_to_topic': "homeassistant / camera_intents / description",
+            'mqtt_publish_to_for_latest_image': "homeassistant/camera_intents/latest_image",
+            'path_to_save_images': "/config/www/appdaemon_intents/",
+            'web_path_to_images': "/local/appdaemon_intents/"
+        }
+    }
+    _settings = {}
 
     def set_config_variables(self):
         _config = self.args["config"] or {}
-        _routing = get_config_var("routing", _config, {})
-        self.IMAGE_FIELD_NAME = get_config_var("image_field_name", _routing, 'image_b64')
-        self.DTG_MESSAGE_FORMAT = get_config_var("dtg_message_format", _routing, '%d/%m/%Y %H:%M:%S')
-        self.SAVE_LATEST_FORMAT = get_config_var("save_latest_format", _routing, 'latest_{}.jpg')
-        self.THUMBNAILS_SUBDIR = get_config_var("thumbnails_subdir", _routing, 'thumbnails')
-        self.THUMBNAILS_MAX_SIZE = get_config_var("thumbnail_max_size", _routing, 200)
-
-        self.MQTT_TOPIC_FOR_CAMERA_INTENTS = get_config_var("mqtt_topic_for_camera_intents", _routing, "BlueIris/+/Status")
-        self.MQTT_TOPIC_FOR_CAMERA_ALERT_IMAGES = get_config_var("mqtt_topic_for_camera_alert_images", _routing, "BlueIris/alerts/+")
-        self.PUBLISH_TOPIC_MESSAGE = get_config_var("mqtt_publish_to_topic", _routing, "homeassistant/camera_intents/description")
-        self.PUBLISH_TOPIC_LATEST_IMAGE = get_config_var("mqtt_publish_to_for_latest_image", _routing, "homeassistant/camera_intents/latest_image")
-        self.SAVE_BLUEIRIS_LOCATION = get_config_var("path_to_save_images", _routing, "/config/www/appdaemon_intents/")
-        self.WEB_PATH_TO_IMAGES = get_config_var("web_path_to_images", _routing, "/local/appdaemon_intents/")
+        self._settings = self._defaults | _config  # Import the config settings from apps.yaml and merge with defaults
 
     def initialize(self):
         # Initialize is called by AppDaemon every time it's reset or turned off and on
@@ -77,10 +68,13 @@ class MqttCameraIntents(hass.Hass):
     def mqtt_message_received_event(self, event_name, data, kwargs):
         # A message was received, handle it if it meets our filters
         try:
-            _topic = data['topic']
+            # Local settings:
+            _topic_cameras = self._settings['routing']['mqtt_topic_for_camera_intents']
+            _topic_images = self._settings['routing']['mqtt_topic_for_camera_alert_images']
 
             # If this topic matches the camera feed lookup topic, parse that
-            if does_needle_match_haystack_topic(_topic, self.MQTT_TOPIC_FOR_CAMERA_INTENTS):
+            _topic = data['topic']
+            if does_needle_match_haystack_topic(_topic, _topic_cameras):
                 _camera = _topic.split("/")[1]
                 _payload = data['payload']
                 _payload = _payload.replace('"analysis":}',
@@ -88,7 +82,7 @@ class MqttCameraIntents(hass.Hass):
                 self.handle_camera_message(_camera, _payload)
 
             # If this topic matches the camera image saving event, parse that
-            elif does_needle_match_haystack_topic(_topic, self.MQTT_TOPIC_FOR_CAMERA_ALERT_IMAGES):
+            elif does_needle_match_haystack_topic(_topic, _topic_images):
                 _camera = _topic.split("/")[2]
                 _payload = data['payload']
                 _payload = _payload.replace('"analysis":}',
@@ -111,16 +105,25 @@ class MqttCameraIntents(hass.Hass):
     # =================================================================
 
     def handle_camera_message(self, camera_name, payload):
+
+        # Local settings:
+        _dtg_format = self._settings['routing']['dtg_message_format']
+        _dtg_format_short = self._settings['routing']['dtg_message_format_short']
+        _save_to = self._settings['routing']['path_to_save_images']
+        _web_path = self._settings['routing']['web_path_to_images']
+        _topic_latest = self._settings['routing']['mqtt_publish_to_for_latest_image']
+        _topic = self._settings['routing']['mqtt_publish_to_topic']
+
         self.log("A MQTT message that matched the _camera_ topic pattern was received")
         self._messages_sent += 1
         try:
             # Handle messages like:
             # {"type":"MOTION_A", "trigger":"ON", "memo":"person:65%,person:78%"}
+            #
             # Or ones with analysis like:
             # {"type":"MOTION_A", "trigger":"ON", "memo":"person:81%", "analysis":
             #   [{"api":"objects","found":{"success":true,"predictions":
             #     [{"confidence":0.54902047,"label":"laptop","y_min":1736,"x_min":775,"y_max":2456,"x_max":1487},
-            #     {"confidence":0.5561656,"label":"chair","y_min":2193,"x_min":1266,"y_max":2945,"x_max":1976},
             #     {"confidence":0.6813332,"label":"person","y_min":1274,"x_min":580,"y_max":2817,"x_max":1389},
             #     {"confidence":0.9031852,"label":"car","y_min":565,"x_min":702,"y_max":1044,"x_max":1553}],
             #     "duration":0}},
@@ -136,9 +139,9 @@ class MqttCameraIntents(hass.Hass):
                 # self.log(payload)
                 return False
 
-            _zone = payload_obj['type'] if 'type' in payload_obj else "unknown"
+            _zone = get_config_var('type', payload_obj, "unknown")
             zone_id = substring_after(_zone, "MOTION_")
-            trigger = payload_obj['trigger'] if 'trigger' in payload_obj else "UNKNOWN"
+            trigger = get_config_var('trigger', payload_obj, "unknown")
 
             # Get the zone names from the camera titles
             zone_name, zone_short_name = get_zone_name_from_camera_and_zone(camera_name, zone_id)
@@ -147,8 +150,8 @@ class MqttCameraIntents(hass.Hass):
                 self.set_states_from_zone(camera_name, zone_id, trigger, payload_obj)
 
                 # Extract info from the MQTT message
-                _memo = payload_obj['memo'] if 'memo' in payload_obj else ""
-                _analysis = payload_obj['analysis'] if 'analysis' in payload_obj else {}
+                _memo = get_config_var('memo', payload_obj, "")
+                _analysis = get_config_var('analysis', payload_obj, {})
 
                 # If face analysis exists, extract out people from those
                 _people, _face_analysis_results = get_face_contents_from_analysis(_analysis)
@@ -160,31 +163,40 @@ class MqttCameraIntents(hass.Hass):
 
                 message = "{} {} seen {}".format(_message, _past_tense, zone_name)
                 if _count > 0 and message != self._last_notice:
-                    _time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                    _short_time = datetime.now().strftime("%H:%M")
+                    _time = datetime.now().strftime(_dtg_format)
+                    _short_time = datetime.now().strftime(_dtg_format_short)
 
                     message_package = {"message": message, "zone": zone_short_name,
                                        "time": _time, "short_time": _short_time}
 
                     # Add an image alert URL to the message if one was sent
-                    _image_id = add_field_to_path_if_exists(payload_obj, self.SAVE_BLUEIRIS_LOCATION, 'path')
+                    _image_id = add_field_to_path_if_exists(payload_obj, _save_to, 'path')
                     if 'path' in payload_obj:
-                        image_url = posixpath.join(self.WEB_PATH_TO_IMAGES, payload_obj['path'])
-                        message_package['image'] = image_url
+                        _file_name = payload_obj['path']
 
-                        # TODO: Check if the image actually exists
+                        # A Path to an image was passed in, check if the image actually exists
+                        _file_path = posixpath.join(_save_to, _file_name)
+                        file_exists = exists(_file_path)
 
-                        # Post a message just of the URL to the latest
-                        self.mqtt.mqtt_publish(self.PUBLISH_TOPIC_LATEST_IMAGE, image_url)
-                        self.log("Published latest alert to {} - {}".format(self.PUBLISH_TOPIC_LATEST_IMAGE, image_url))
+                        if file_exists:
+                            image_url = posixpath.join(_web_path, _file_name)
+
+                            # Post a message just of the URL to the latest
+                            self.mqtt.mqtt_publish(_topic_latest, image_url)
+                            self.log("Published latest alert to {} - {}".format(_topic_latest, image_url))
+
+                            # Add image information to the intent message
+                            message_package['image'] = image_url
+                        else:
+                            self.log("Received a message for {} but the file doesn't exist".format(_file_name))
 
                     # Send the alert of the full message via MQTT
                     out = json.dumps(message_package)
-                    self.mqtt.mqtt_publish(self.PUBLISH_TOPIC_MESSAGE, out)
+                    self.mqtt.mqtt_publish(_topic, out)
 
                     # save that it was the last one sent to reduce duplicates
                     self._last_notice = message
-                    self.log("Published to {} - {}".format(self.PUBLISH_TOPIC_MESSAGE, out))
+                    self.log("Published to {} - {}".format(_topic, out))
                 elif _count > 0:
                     self.log("Duplicate message so not broadcast - {}".format(message))
                 else:
@@ -206,21 +218,20 @@ class MqttCameraIntents(hass.Hass):
         # Handle messages like:
         # {"image_b64":"2234asdf..", "path":"image123.jpg"}
 
+        _save_to = self._settings['routing']['path_to_save_images']
+        _save_latest_format = self._settings['routing']['save_latest_format']
+        _max_size = self._settings['routing']['thumbnail_max_size']
+
         self.log("A MQTT message that matched the _image_ topic pattern was received")
         self._messages_sent += 1
 
         # Get the image and path and save a thumbnail if image is valid
         base64_str, path, thumbnail_path, error = extract_path_and_image_from_mqtt_message(
-            payload, self.SAVE_BLUEIRIS_LOCATION, camera_name)
-
-# TODO: add these variables:
-
-#            b64_field_name=self.IMAGE_FIELD_NAME,
-#            save_latest_format=self.SAVE_LATEST_FORMAT, thumbnails_subdir=self.THUMBNAILS_SUBDIR
+            payload, camera_name, self._settings)
 
         # Build the path to save the latest alert to
-        if self.SAVE_LATEST_FORMAT:
-            latest_path = posixpath.join(self.SAVE_BLUEIRIS_LOCATION, self.SAVE_LATEST_FORMAT.format("alert.jpg"))
+        if _save_latest_format:
+            latest_path = posixpath.join(_save_to, _save_latest_format.format("alert.jpg"))
         else:
             latest_path = None
 
@@ -231,7 +242,7 @@ class MqttCameraIntents(hass.Hass):
             try:
                 with open(path, "wb") as fh:
                     fh.write(base64.b64decode(str(base64_str)))
-                    self.log("Saved an image from camera [{}] to {} - size {}".format(camera_name, path, len(base64_str)))
+                    self.log("Saved an image from [{}] to {} - size {}".format(camera_name, path, len(base64_str)))
 
                 if latest_path:
                     with open(latest_path, "wb") as fh:
@@ -244,7 +255,7 @@ class MqttCameraIntents(hass.Hass):
                 # Also create a thumbnail
                 # self.log("...Saving a thumbnail to {}".format(path_thumbnail))
                 img = Image.open(path)
-                img.thumbnail((self.THUMBNAILS_MAX_SIZE, self.THUMBNAILS_MAX_SIZE))
+                img.thumbnail((_max_size, _max_size))
                 img.save(fp=thumbnail_path)
                 # self.log("...Saved a thumbnail also to {}".format(path_thumbnail))
 
