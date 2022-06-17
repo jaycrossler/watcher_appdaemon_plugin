@@ -1,5 +1,4 @@
 import posixpath
-import json
 
 
 def extract_face_predictions(analysis):
@@ -85,42 +84,6 @@ def add_field_to_path_if_exists(payload_obj, source_dir, field, prefix=""):
     return ''
 
 
-def extract_path_and_image_from_mqtt_message(payload, camera_name, settings):
-
-    path = None
-    base64_str = None
-    error = None
-    thumbnail_path = None
-
-    _b64_field_name = settings['routing']['image_field_name']
-    _save_latest_format = settings['routing']['save_latest_format']
-    _thumbnails_subdir = settings['routing']['thumbnails_subdir']
-    _save_loc = settings['routing']['path_to_save_images']
-
-    # If it doesn't start with a { assume it's a b64 encoded image. Generate paths and get the image data
-    if payload and len(payload) > 1000 and payload[0] != "{":
-        # A large image payload was received that isn't JSON.  See if it's a bit64 image
-        path = posixpath.join(_save_loc, _save_latest_format.format(camera_name))
-        thumbnail_path = posixpath.join(_save_loc, _thumbnails_subdir, _save_latest_format.format(camera_name))
-        base64_str = payload
-
-    elif payload and 'path' in payload and _b64_field_name in payload:
-        # This is likely JSON, try to extract and use it
-        try:
-            payload_obj = json.loads(payload)
-
-            path = add_field_to_path_if_exists(payload_obj, _save_loc, 'path')
-            thumbnail_path = add_field_to_path_if_exists(payload_obj, _save_loc, 'path', _thumbnails_subdir)
-            base64_str = get_config_var(_b64_field_name, payload_obj, "")
-            # self.log("Image {} extracted, size {}".format(path, len(base64_str)))
-        except ValueError:
-            error = "Received an alert JSON payload that threw an exception"
-    else:
-        error = "Invalid JSON or image data received"
-
-    return base64_str, path, thumbnail_path, error
-
-
 def get_zone_name_from_camera_and_zone(camera_name, zone_id):
     zone_name = camera_name
     zone_shortname = ""
@@ -202,3 +165,23 @@ def substring_before(s, deliminator): return s.partition(deliminator)[0]
 def get_config_var(field, holder, default_val=None):
     # return an item's value from a dictionary
     return holder[field] if field in holder else default_val
+
+
+def merge_dictionaries(source, destination):
+    # """
+    # from: https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
+    #
+    # >>> a = { 'first' : { 'all_rows' : { 'pass' : 'dog', 'number' : '1' } } }
+    # >>> b = { 'first' : { 'all_rows' : { 'fail' : 'cat', 'number' : '5' } } }
+    # >>> merge(b, a) == { 'first' : { 'all_rows' : { 'pass' : 'dog', 'fail' : 'cat', 'number' : '5' } } }
+    # True
+    # """
+    for key, value in source.items():
+        if isinstance(value, dict):
+            # get node or create one
+            node = destination.setdefault(key, {})
+            merge_dictionaries(value, node)
+        else:
+            destination[key] = value
+
+    return destination
