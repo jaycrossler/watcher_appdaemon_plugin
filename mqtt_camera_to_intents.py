@@ -36,17 +36,17 @@ class MqttCameraIntents(hass.Hass):
             'image_field_name': 'image_b64',
             'dtg_message_format': '%d/%m/%Y %H:%M:%S',
             'dtg_message_format_short': '%H:%M',
-            'mqtt_topic_for_camera_intents': "BlueIris / + / Status",
+            'mqtt_topic_for_camera_intents': "BlueIris/+/Status",
             'mqtt_topic_for_camera_alert_images': "BlueIris/alerts/+",
-            'mqtt_publish_to_topic': "homeassistant / camera_intents / description",
+            'mqtt_publish_to_topic': "homeassistant/camera_intents/description",
             'mqtt_publish_to_for_latest_image': "homeassistant/camera_intents/latest_image",
-            'web_path_to_images': "/local/appdaemon_intents/"
         },
         'saving': {
             'save_latest_format': 'latest_{}.jpg',  # Set to None to not save the latest image
             'thumbnails_subdir': 'thumbnails',
             'thumbnail_max_size': 300,
             'path_to_save_images': "/config/www/appdaemon_intents/",
+            'web_path_to_images': "/local/appdaemon_intents/",
             'days_to_keep_images': None  # delete old files after n days, or None to keep everything
         }
     }
@@ -79,9 +79,9 @@ class MqttCameraIntents(hass.Hass):
             if d2 in self._settings[d1]:
                 return self._settings[d1][d2]
             else:
-                self.log('[ERROR] setting {} not found in config.{}'.format(d2, d1))
+                self.log('[ERROR] the setting {} not found in config.{}'.format(d2, d1))
         else:
-            self.log('[ERROR] setting config.{} not found'.format(d1))
+            self.log('[ERROR] the setting config.{} not found'.format(d1))
         return None
 
     def set_config_variables(self):
@@ -245,7 +245,7 @@ class MqttCameraIntents(hass.Hass):
                 self.set_states_from_zone(camera_name, zone_id, trigger, payload_obj)
                 self.log("Motion off on camera {} in zone {} - {}".format(camera_name, zone_id, zone_name))
             else:
-                self.log("Motion unknown on camera {} in zone {} - {}".format(camera_name, zone_id, zone_name))
+                self.log("Motion unknown [{}] on camera {} in zone {} - {}".format(trigger, camera_name, zone_id, zone_name))
 
         except KeyError as ex:
             self.log("KeyError getting camera {} data:".format(camera_name))
@@ -258,56 +258,28 @@ class MqttCameraIntents(hass.Hass):
         # {"image_b64":"2234asdf..", "path":"image123.jpg"}
 
         try:
-            _save_to = self.get_setting('saving', 'path_to_save_images')
-            _save_latest_format = self.get_setting('saving', 'save_latest_format')
-            _max_size = int(self.get_setting('saving', 'thumbnail_max_size'))
-
             self.log("A MQTT message that matched the _image_ topic pattern was received")
             self._messages_sent += 1
 
             # Get the image and path and save a thumbnail if image is valid
-            base64_str, path, thumbnail_path, error = self.extract_path_and_image_from_mqtt_message(
-                payload, camera_name)
-
-            # Build the path to save the latest alert to
-            if _save_latest_format:
-                latest_path = posixpath.join(_save_to, _save_latest_format.format("alert.jpg"))
-            else:
-                latest_path = None
-
+            base64_str, file_id, error = self.extract_path_and_image_from_mqtt_message(payload, camera_name)
             if error:
-                self.log("[ERROR] {}".format(error))
-            elif base64_str and path and len(base64_str) > 1000:
-                # Handle the image data
-                try:
-                    with open(path, "wb") as fh:
-                        fh.write(base64.b64decode(str(base64_str)))
-                        self.log("Saved an image from [{}] to {} - size {}".format(camera_name, path, len(base64_str)))
+                self.log("Error: {}".format(error))
 
-                    if latest_path:
-                        with open(latest_path, "wb") as fh:
-                            fh.write(base64.b64decode(str(base64_str)))
+            # Create an Imagery object and save the files to disk
+            image = Imagery(file_id, base64_str, camera_name, self._settings)
 
-                    # TODO: Also save it as latest
-
-                except:
-                    self.log("..Tried to save an image that wouldn't work with the base 64 decoder")
-
-                try:
-                    # Also create a thumbnail
-                    # self.log("...Saving a thumbnail to {}".format(path_thumbnail))
-                    img = Image.open(path)
-                    img.thumbnail((_max_size, _max_size))
-                    img.save(fp=thumbnail_path)
-                    # self.log("...Saved a thumbnail also to {}".format(path_thumbnail))
-
-                except UnidentifiedImageError:
-                    self.log("..PIL could not import the included image")
-                except ValueError:
-                    self.log("..ValueError on saving a smaller image, size {}".format(len(base64_str)))
-
-            else:
-                self.log("..couldn't save image - no path or b64 image data")
+            message, error = image.save_full_sized()
+            if error:
+                self.log("Error: {}".format(error))
+#            self.log("Message: {} | Error: {}".format(message, error))
+            if error:
+                self.log("Error: {}".format(error))
+#            self.log("Message: {} | Error: {}".format(message, error))
+            if error:
+                self.log("Error: {}".format(error))
+#            self.log("Message: {} | Error: {}".format(message, error))
+            image.clean_image_folders()
 
         except KeyError as ex:
             self.log("KeyError problem in handling image message: {}".format(ex))
@@ -315,10 +287,9 @@ class MqttCameraIntents(hass.Hass):
     def extract_path_and_image_from_mqtt_message(self, payload, camera_name):
 
         # Local variables:
-        path = None
         base64_str = None
         error = None
-        thumbnail_path = None
+        file_id = None
 
         _b64_field_name = self.get_setting('routing', 'image_field_name')
         _save_latest_format = self.get_setting('saving', 'save_latest_format')
@@ -328,17 +299,15 @@ class MqttCameraIntents(hass.Hass):
         # If it doesn't start with a { assume it's a b64 encoded image. Generate paths and get the image data
         if payload and len(payload) > 1000 and payload[0] != "{":
             # A large image payload was received that isn't JSON.  See if it's a bit64 image
-            path = posixpath.join(_save_loc, _save_latest_format.format(camera_name))
-            thumbnail_path = posixpath.join(_save_loc, _thumbnails_subdir, _save_latest_format.format(camera_name))
+            file_id = _save_latest_format.format(camera_name)
             base64_str = payload
 
         elif payload and 'path' in payload and _b64_field_name in payload:
             # This is likely JSON, try to extract and use it
             try:
                 payload_obj = json.loads(payload)
+                file_id = payload_obj['path']
 
-                path = add_field_to_path_if_exists(payload_obj, _save_loc, 'path')
-                thumbnail_path = add_field_to_path_if_exists(payload_obj, _save_loc, 'path', _thumbnails_subdir)
                 base64_str = get_config_var(_b64_field_name, payload_obj, "")
                 # self.log("Image {} extracted, size {}".format(path, len(base64_str)))
             except ValueError:
@@ -346,4 +315,4 @@ class MqttCameraIntents(hass.Hass):
         else:
             error = "Invalid JSON or image data received"
 
-        return base64_str, path, thumbnail_path, error
+        return base64_str, file_id, error
