@@ -85,11 +85,10 @@ def add_field_to_path_if_exists(payload_obj, source_dir, field, prefix=""):
 
 
 def get_zone_name_from_camera_and_zone(camera_name, zone_id):
-    zone_name = camera_name
-    zone_shortname = ""
 
-    if camera_name == "TestCam":
+    if camera_name in ["TestCam", "eufy1"]:
         zone_name = "simulated in the holodeck"
+        zone_shortname = "testing"
     elif camera_name == "annke1hd":
         zone_name = "near the mudroom"
         zone_shortname = "mudroom"
@@ -107,17 +106,17 @@ def get_zone_name_from_camera_and_zone(camera_name, zone_id):
         zone_shortname = "driveway_side"
     elif camera_name == "reolink6":
         zone_shortname = "pavilion"
-        if "A" in zone_id:
-            zone_name = "in the back yard"
-        elif "B" in zone_id:
+        if "B" in zone_id:
             zone_name = "on the patio"
         elif "C" in zone_id:
             zone_name = "near the hot tub"
+        else:
+            zone_name = "in the back yard"
     elif camera_name == "eufy2":
         zone_shortname = "basement"
         zone_name = "in the basement"
     else:
-        zone_shortname = "unknown"
+        zone_shortname = "not matched"
         zone_name = "- {} {}".format(camera_name, zone_id)
 
     return zone_name, zone_shortname

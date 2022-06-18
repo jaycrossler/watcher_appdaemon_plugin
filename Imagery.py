@@ -16,22 +16,28 @@ class Imagery:
         self._settings = settings
         self.binary = base64.b64decode(str(payload))
         self._log = log
+        self.web_url = None
+        self.thumbnail_url = None
 
         # except:
         #     # TODO: Add error checking
         #     self.binary = None
 
     def save_thumbnail(self):
+        # Save a thumbnail of the image
         _save_loc = self.get_setting('saving', 'path_to_save_images')
         _thumbnails_subdir = self.get_setting('saving', 'thumbnails_subdir')
         _thumbnail_path = posixpath.join(_save_loc, _thumbnails_subdir, self.file_id)
         _thumbnails_size = self.get_setting('saving', 'thumbnail_max_size')
+        _web_path_to_images = self.get_setting('saving', 'web_path_to_images')
 
         try:
             # Also create a thumbnail
             img = Image.open(io.BytesIO(self.binary))
             img.thumbnail((_thumbnails_size, _thumbnails_size))
             img.save(fp=_thumbnail_path)
+            self.thumbnail_url = posixpath.join(_web_path_to_images, _thumbnails_subdir, self.file_id)
+
             self.log("Saved a thumbnail to {}".format(_thumbnail_path), level="INFO")
 
         except FileNotFoundError as ex:
@@ -42,6 +48,7 @@ class Imagery:
             self.log("Error {} saving smaller image {} - {}".format(ex, self.file_id, len(self.binary)), level="ERROR")
 
     def save_as_latest(self):
+        # Save the image as the "latest" image - # TODO: Combine with other save methods
         _save_to = self.get_setting('saving', 'path_to_save_images')
         _save_latest_format = self.get_setting('saving', 'save_latest_format')
         _max_size = int(self.get_setting('saving', 'thumbnail_max_size'))
@@ -60,10 +67,12 @@ class Imagery:
             self.log("Error {} Could not save image: {} to {} - size {}".format(ex, _cam, _file, _size), level="ERROR")
 
     def save_full_sized(self):
+        # Save the image file
         _save_to = self.get_setting('saving', 'path_to_save_images')
         _cam = self.camera
         _file = self.file_id
         _size = len(self.payload) if self.payload else 0
+        _web_path_to_images = self.get_setting('saving', 'web_path_to_images')
 
         path = posixpath.join(_save_to, self.file_id)
 
@@ -72,6 +81,7 @@ class Imagery:
                 fh.write(base64.b64decode(str(self.payload)))
                 # fh.write(self.binary) # TODO - use this instead
                 self.log("Saved an image from [{}] to {} - size {}".format(_cam, _file, _size), level="INFO")
+                self.web_url = posixpath.join(_web_path_to_images, self.file_id)
 
         except TypeError as ex:
             self.log("Error {} Could not save image: [{}] to {} - {}".format(ex, _cam, _file, _size), level="ERROR")
@@ -90,6 +100,7 @@ class Imagery:
     # ---------------------------------------------
 
     def get_setting(self, d1, d2):
+        # Wrapper to get settings from parent settings object
         if d1 in self._settings:
             if d2 in self._settings[d1]:
                 return self._settings[d1][d2]
@@ -100,6 +111,7 @@ class Imagery:
         return None
 
     def remove_files_older_than(self, dir_path, limit_days):
+        # Delete files that are older than n days
         files_removed = 0
 
         threshold = time.time() - limit_days * 86400
@@ -114,5 +126,7 @@ class Imagery:
             self.log("Removed {} old files from {}".format(files_removed, dir_path), level="INFO")
 
     def log(self, message, level="INFO"):
+        # Wrapper to main _log object
+
         if self._log:
             self._log(message, level=level)
