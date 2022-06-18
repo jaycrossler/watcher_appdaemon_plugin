@@ -3,9 +3,7 @@ from datetime import datetime
 from os.path import exists
 
 import json
-import base64
 # NOTE: Make sure AppDaemon config is set to import 'py3-pillow' as an AppDaemon system package
-from PIL import Image, UnidentifiedImageError
 from string_helpers import *
 from Imagery import Imagery
 
@@ -19,7 +17,6 @@ NOTIFICATIONS_BEFORE_ALLOWING_DUPLICATES = 10
 # TODO: Figure why there are images sometimes sent to the log, maybe one camera just sending an image? Maybe a log obj?
 # TODO: Rename as watcher, add to camera tracking project
 # TODO: Move to Zones
-# TODO: Delete old images to save space
 # TODO: Use SenseAI for faces
 # TODO: Add priorities
 
@@ -68,10 +65,10 @@ class MqttCameraIntents(hass.Hass):
 
         if len(test_failed):
             for err in test_failed:
-                self.log("[ERROR] {}".format(err))
+                self.log("[ERROR] {}".format(err), level="ERROR")
             return False
         else:
-            self.log("=======Setup complete and tests have all passed=======")
+            self.log("=======Setup complete and tests have all passed=======", level="INFO")
             return True
 
     def get_setting(self, d1, d2):
@@ -79,9 +76,9 @@ class MqttCameraIntents(hass.Hass):
             if d2 in self._settings[d1]:
                 return self._settings[d1][d2]
             else:
-                self.log('[ERROR] the setting {} not found in config.{}'.format(d2, d1))
+                self.log('[ERROR] the setting {} not found in config.{}'.format(d2, d1), level="ERROR")
         else:
-            self.log('[ERROR] the setting config.{} not found'.format(d1))
+            self.log('[ERROR] the setting config.{} not found'.format(d1), level="ERROR")
         return None
 
     def set_config_variables(self):
@@ -128,7 +125,7 @@ class MqttCameraIntents(hass.Hass):
                 self.handle_image_message(_camera, _payload)
 
         except KeyError as ex:
-            self.log("KeyError trying to extract topic and payload from MQTT Message: {}".format(ex))
+            self.log("KeyError trying to extract topic and payload from MQTT Message: {}".format(ex), level="ERROR")
 
     def set_states_from_zone(self, camera_name, zone_id, trigger, payload):
         state = "on" if trigger.lower() == "on" else "off"
@@ -153,7 +150,7 @@ class MqttCameraIntents(hass.Hass):
         _save_to = self.get_setting('saving', 'path_to_save_images')
         _web_path = self.get_setting('saving', 'web_path_to_images')
 
-        self.log("A MQTT message that matched the _camera_ topic pattern was received")
+        self.log("A MQTT message that matched the _camera_alert_ topic pattern was received", level="INFO")
         self._messages_sent += 1
         try:
             # Handle messages like:
@@ -174,7 +171,7 @@ class MqttCameraIntents(hass.Hass):
                 # TODO: Check if it's likely JSON format
                 payload_obj = json.loads(payload)
             except ValueError:
-                self.log("..but the JSON payload threw an exception when it was being parsed by 'json.loads'")
+                self.log("JSON payload threw an exception when it was being parsed by 'json.loads'", level="ERROR")
                 # self.log(payload)
                 return False
 
@@ -202,7 +199,7 @@ class MqttCameraIntents(hass.Hass):
 
                 message = "{} {} seen {}".format(_message, _past_tense, zone_name)
                 if message == self._last_notice:
-                    self.log("Duplicate message so not broadcast - {}".format(message))
+                    self.log("Duplicate message so not broadcast - {}".format(message), level="DEBUG")
                 elif _count > 0:
                     _time = datetime.now().strftime(_dtg_format)
                     _short_time = datetime.now().strftime(_dtg_format_short)
@@ -224,12 +221,12 @@ class MqttCameraIntents(hass.Hass):
 
                             # Post a message just of the URL to the latest
                             self.mqtt.mqtt_publish(_topic_latest, image_url)
-                            self.log("Published latest alert to {} - {}".format(_topic_latest, image_url))
+                            self.log("Published latest alert to {} - {}".format(_topic_latest, image_url), level="INFO")
 
                             # Add image information to the intent message
                             message_package['image'] = image_url
                         else:
-                            self.log("Received a message for {} but the file doesn't exist".format(_file_name))
+                            self.log("Received message for {} but file doesn't exist".format(_file_name), level="DEBUG")
 
                     # Send the alert of the full message via MQTT
                     out = json.dumps(message_package)
@@ -237,20 +234,20 @@ class MqttCameraIntents(hass.Hass):
 
                     # save that it was the last one sent to reduce duplicates
                     self._last_notice = message
-                    self.log("Published to {} - {}".format(_topic, out))
+                    self.log("Published to {} - {}".format(_topic, out), level="INFO")
                 else:
-                    self.log("Something {} - but empty so not publishing".format(message))
+                    self.log("Something {} - but empty so not publishing".format(message), level="DEBUG")
             elif trigger.lower() == "Off":
                 # Motion turning off
                 self.set_states_from_zone(camera_name, zone_id, trigger, payload_obj)
-                self.log("Motion off on camera {} in zone {} - {}".format(camera_name, zone_id, zone_name))
+                # TODO: Put a delay in to turn it off
+                self.log("Motion off on camera {} in zone {} - {}".format(camera_name, zone_id, zone_name), level="INFO")
             else:
-                self.log("Motion unknown [{}] on camera {} in zone {} - {}".format(trigger, camera_name, zone_id, zone_name))
+                self.log("Motion unknown [{}] on camera {} in zone {} - {}".format(
+                    trigger, camera_name, zone_id, zone_name), level="DEBUG")
 
         except KeyError as ex:
-            self.log("KeyError getting camera {} data:".format(camera_name))
-            self.log(payload[0:40])
-            self.log(ex)
+            self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")
         pass
 
     def handle_image_message(self, camera_name, payload):
@@ -258,31 +255,28 @@ class MqttCameraIntents(hass.Hass):
         # {"image_b64":"2234asdf..", "path":"image123.jpg"}
 
         try:
-            self.log("A MQTT message that matched the _image_ topic pattern was received")
+            self.log("A MQTT message that matched the _image_ topic pattern was received", level="INFO")
             self._messages_sent += 1
 
             # Get the image and path and save a thumbnail if image is valid
-            base64_str, file_id, error = self.extract_path_and_image_from_mqtt_message(payload, camera_name)
-            if error:
-                self.log("Error: {}".format(error))
+            base64_str, file_id = self.extract_path_and_image_from_mqtt_message(payload, camera_name)
 
             # Create an Imagery object and save the files to disk
-            image = Imagery(file_id, base64_str, camera_name, self._settings)
+            image = Imagery(
+                file_id=file_id,
+                payload=base64_str,
+                camera=camera_name,
+                settings=self._settings,
+                log=self.log
+            )
 
-            message, error = image.save_full_sized()
-            if error:
-                self.log("Error: {}".format(error))
-#            self.log("Message: {} | Error: {}".format(message, error))
-            if error:
-                self.log("Error: {}".format(error))
-#            self.log("Message: {} | Error: {}".format(message, error))
-            if error:
-                self.log("Error: {}".format(error))
-#            self.log("Message: {} | Error: {}".format(message, error))
+            image.save_full_sized()
+            image.save_thumbnail()
+            image.save_as_latest()
             image.clean_image_folders()
 
         except KeyError as ex:
-            self.log("KeyError problem in handling image message: {}".format(ex))
+            self.log("KeyError problem in handling image message: {}".format(ex), level="ERROR")
 
     def extract_path_and_image_from_mqtt_message(self, payload, camera_name):
 
@@ -309,10 +303,10 @@ class MqttCameraIntents(hass.Hass):
                 file_id = payload_obj['path']
 
                 base64_str = get_config_var(_b64_field_name, payload_obj, "")
-                # self.log("Image {} extracted, size {}".format(path, len(base64_str)))
-            except ValueError:
-                error = "Received an alert JSON payload that threw an exception"
+                self.log("Image {} extracted, size {}".format(file_id, len(base64_str)), level="INFO")
+            except ValueError as ex:
+                self.log("Received an alert JSON payload: {}".format(ex), level="ERROR")
         else:
-            error = "Invalid JSON or image data received"
+            self.log("Invalid JSON or image data received", level="ERROR")
 
-        return base64_str, file_id, error
+        return base64_str, file_id

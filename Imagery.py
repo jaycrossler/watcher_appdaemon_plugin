@@ -9,12 +9,13 @@ import time
 class Imagery:
     # Manage images
 
-    def __init__(self, file_id, payload, camera, settings):
+    def __init__(self, file_id, payload, camera, settings, log=print):
         self.file_id = file_id
         self.payload = payload
         self.camera = camera
         self._settings = settings
         self.binary = base64.b64decode(str(payload))
+        self._log = log
 
         # except:
         #     # TODO: Add error checking
@@ -26,24 +27,19 @@ class Imagery:
         _thumbnail_path = posixpath.join(_save_loc, _thumbnails_subdir, self.file_id)
         _thumbnails_size = self.get_setting('saving', 'thumbnail_max_size')
 
-        message = None
-        error = None
         try:
             # Also create a thumbnail
-            # self.log("...Saving a thumbnail to {}".format(path_thumbnail))
             img = Image.open(io.BytesIO(self.binary))
             img.thumbnail((_thumbnails_size, _thumbnails_size))
             img.save(fp=_thumbnail_path)
-            # self.log("...Saved a thumbnail also to {}".format(path_thumbnail))
+            self.log("Saved a thumbnail to {}".format(_thumbnail_path), level="INFO")
 
         except FileNotFoundError as ex:
-            error = "[ERROR {}] could not save file {]".format(ex, _thumbnail_path)
+            self.log("Error {} could not save file {]".format(ex, _thumbnail_path), level="ERROR")
         except UnidentifiedImageError as ex:
-            error = "[ERROR {}] PIL could not import the included image".format(ex)
+            self.log("Error {} PIL could not import the included image".format(ex), level="ERROR")
         except ValueError as ex:
-            error = "[ERROR {}] on saving a smaller image {}, size {}".format(ex, self.file_id, len(self.binary))
-
-        return message, error
+            self.log("Error {} saving smaller image {} - {}".format(ex, self.file_id, len(self.binary)), level="ERROR")
 
     def save_as_latest(self):
         _save_to = self.get_setting('saving', 'path_to_save_images')
@@ -55,17 +51,13 @@ class Imagery:
         _file = self.file_id
         _size = len(self.payload) if self.payload else 0
 
-        message = None
-        error = None
         try:
             with open(latest_path, "wb") as fh:
                 fh.write(base64.b64decode(str(self.payload)))
                 # fh.write(self.binary) # TODO - use this instead
-                message = "Saved latest image from [{}] to {} - size {}".format(_cam, _file, _size)
+                self.log("Saved latest image from [{}] to {} - size {}".format(_cam, _file, _size), level="INFO")
         except IOError as ex:
-            error = "[ERROR {}] Could not save image: [{}] to {} - size {}".format(ex, _cam, _file, _size)
-
-        return message, error
+            self.log("Error {} Could not save image: {} to {} - size {}".format(ex, _cam, _file, _size), level="ERROR")
 
     def save_full_sized(self):
         _save_to = self.get_setting('saving', 'path_to_save_images')
@@ -75,20 +67,14 @@ class Imagery:
 
         path = posixpath.join(_save_to, self.file_id)
 
-        message = None
-        error = None
-
         try:
             with open(path, "wb") as fh:
                 fh.write(base64.b64decode(str(self.payload)))
                 # fh.write(self.binary) # TODO - use this instead
-                message = "Saved an image from [{}] to {} - size {}".format(_cam, _file, _size)
+                self.log("Saved an image from [{}] to {} - size {}".format(_cam, _file, _size), level="INFO")
 
         except TypeError as ex:
-            error = "[ERROR {}] Could not save image: [{}] to {} - size {}".format(ex, _cam, _file, _size)
-        # TODO: Improve Error catching
-
-        return message, error
+            self.log("Error {} Could not save image: [{}] to {} - {}".format(ex, _cam, _file, _size), level="ERROR")
 
     def clean_image_folders(self):
         # Delete old files in image directories
@@ -98,8 +84,8 @@ class Imagery:
             _thumbnails_subdir = self.get_setting('saving', 'thumbnails_subdir')
             _thumbnail_path = posixpath.join(_save_loc, _thumbnails_subdir)
 
-            remove_files_older_than(_save_loc, _days_to_keep)
-            remove_files_older_than(_thumbnail_path, _days_to_keep)
+            self.remove_files_older_than(_save_loc, _days_to_keep)
+            self.remove_files_older_than(_thumbnail_path, _days_to_keep)
 
     # ---------------------------------------------
 
@@ -108,23 +94,25 @@ class Imagery:
             if d2 in self._settings[d1]:
                 return self._settings[d1][d2]
             else:
-                self.log('[ERROR] the setting {} not found in config.{}'.format(d2, d1))
+                self.log('Error - the setting {} not found in config.{}'.format(d2, d1), level="ERROR")
         else:
-            self.log('[ERROR] the setting config.{} not found'.format(d1))
+            self.log('Error - the setting config.{} not found'.format(d1), level="ERROR")
         return None
 
-    def log(self, message):
-        # TODO: Do somethings with these
-        pass
+    def remove_files_older_than(self, dir_path, limit_days):
+        files_removed = 0
 
+        threshold = time.time() - limit_days * 86400
+        entries = os.listdir(dir_path)
+        for file in entries:
+            file_pointer = os.path.join(dir_path, file)
+            creation_time = os.stat(file_pointer).st_ctime
+            if creation_time < threshold:
+                os.remove(file_pointer)
+                files_removed += 1
+        if files_removed > 0:
+            self.log("Removed {} old files from {}".format(files_removed, dir_path), level="INFO")
 
-# ---------------------------------------------
-
-def remove_files_older_than(dir_path, limit_days):
-    threshold = time.time() - limit_days * 86400
-    entries = os.listdir(dir_path)
-    for file in entries:
-        file_pointer = os.path.join(dir_path, file)
-        creation_time = os.stat(file_pointer).st_ctime
-        if creation_time < threshold:
-            os.remove(file_pointer)
+    def log(self, message, level="INFO"):
+        if self._log:
+            self._log(message, level=level)
