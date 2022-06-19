@@ -13,7 +13,7 @@ class ImageAlert:
         self._log = log
 
         self.image = None
-        self.zone_id = None
+        self.motion_area = None
         self.zone_name = None
         self.zone_short_name = None
         self.trigger = None
@@ -41,12 +41,12 @@ class ImageAlert:
             _topic_latest = self.get_setting('routing', 'mqtt_publish_to_for_latest_image')
             _topic = self.get_setting('routing', 'mqtt_publish_to_topic')
 
-            _zone = get_config_var('type', self.payload_obj, "unknown")
-            self.zone_id = substring_after(_zone, "MOTION_")
+            _motion_area = get_config_var('type', self.payload_obj, "unknown")
+            self.motion_area = substring_after(_motion_area, "MOTION_")
             self.trigger = get_config_var('trigger', self.payload_obj, "unknown")
 
             # Get the zone names from the camera titles
-            self.zone_name, self.zone_short_name = get_zone_name_from_camera_and_zone(camera_name, self.zone_id)
+            self.zone_name, self.zone_short_name = get_zone_name_from_camera_and_zone(camera_name, self.motion_area)
 
             self.memo = get_config_var('memo', self.payload_obj, "")
             self.analysis = get_config_var('analysis', self.payload_obj, {})
@@ -130,6 +130,8 @@ class ImageAlert:
             self.log("Invalid JSON or image data received", level="ERROR")
 
         return base64_str, file_id
+
+    # ==================================
 
     def get_setting(self, d1, d2):
         # Wrapper to get settings from parent settings object

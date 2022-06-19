@@ -1,4 +1,6 @@
 import posixpath
+import os
+import yaml
 
 
 def extract_face_predictions(analysis):
@@ -184,3 +186,17 @@ def merge_dictionaries(source, destination):
             destination[key] = value
 
     return destination
+
+
+def load_config_file_node(filename, node, default_val, log):
+    _config_from_file = default_val
+    if os.path.exists(filename):
+        with open(filename, 'r') as conf_file:
+            _yaml_contents = yaml.safe_load(conf_file)
+            if node in _yaml_contents:
+                _config_from_file = _yaml_contents[node]
+            else:
+                log('Error: "{}}" doesnt have "{}}" settings'.format(filename, node))
+    else:
+        log('Error: "config_file" set in apps.yaml config, but {} doesnt seem to exist'.format(filename))
+    return _config_from_file

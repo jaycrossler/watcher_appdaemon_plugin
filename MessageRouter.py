@@ -1,9 +1,9 @@
 import appdaemon.plugins.hass.hassapi as hass
-
 # NOTE: Make sure AppDaemon config is set to import 'py3-pillow' as an AppDaemon system package
 
 from string_helpers import *
 from ImageAlert import ImageAlert
+from MessageRouterConfiguration import MessageRouterConfiguration
 
 # ---------------------------------------------------
 # Listen for multiple types of Image Action messages,
@@ -11,7 +11,6 @@ from ImageAlert import ImageAlert
 # ---------------------------------------------------
 
 # TODO: Add in camera tracking project
-# TODO: Move to Zones
 # TODO: Use SenseAI for faces
 # TODO: Add priorities
 
@@ -23,31 +22,6 @@ class MessageRouter(hass.Hass):
     mqtt = None  # MQTT Object to send/receive messages
 
     # Variables configurable through config settings
-    _defaults = {
-        'routing': {
-            'image_field_name': 'image_b64',
-            'dtg_message_format': '%d/%m/%Y %H:%M:%S',
-            'dtg_message_format_short': '%H:%M',
-            'mqtt_topic_for_camera_intents': "BlueIris/+/Status",
-            'mqtt_topic_for_camera_alert_images': "BlueIris/alerts/+",
-            'mqtt_publish_to_topic': "homeassistant/camera_intents/description",
-            'mqtt_publish_to_for_latest_image': "homeassistant/camera_intents/latest_image",
-        },
-        'saving': {
-            'save_latest_format': 'latest_{}.jpg',  # Set to None to not save the latest image
-            'thumbnails_subdir': 'thumbnails',
-            'thumbnail_max_size': 300,
-            'path_to_save_images': "/config/www/appdaemon_intents/",
-            'web_path_to_images': "/local/appdaemon_intents/",
-            'days_to_keep_images': None  # delete old files after n days, or None to keep everything
-        },
-        'cameras': [
-
-        ],
-        'zones': [
-
-        ]
-    }
     _settings = {}
 
     # =================================================================
@@ -61,6 +35,11 @@ class MessageRouter(hass.Hass):
             test_failed.append("Failed looking up savings.save_latest_format being correct, likely app.yaml problem")
         if self.get_setting('routing', 'image_field_name') != 'image_b64':
             test_failed.append("Failed looking up routing.image_field_name, likely problem parsing _settings")
+        if 'zones' not in self._settings:
+            test_failed.append("Failed finding config.yaml items in _settings, maybe didn't load")
+        elif len(self._settings['zones']) and 'id' in self._settings['zones'] and self._settings['zones'][0]['id'] != 'simulated':
+            test_failed.append("First zone in config.yaml is not 'simulated'")
+
         if not self.mqtt.is_client_connected():
             test_failed.append("MQTT client could not connect")
 
@@ -83,8 +62,18 @@ class MessageRouter(hass.Hass):
         return None
 
     def set_config_variables(self):
+        # Load configuration variables
         _config = self.args["config"] or {}
-        _merged_config = self._defaults
+        _config_from_file = {}
+        if "config_file" in _config:
+            config_filename = _config["config_file"]
+            _config_from_file = load_config_file_node(config_filename, 'config', {}, self.log)
+
+        # Build the configuration - start with defaults, add config pointer file, add apps.yaml settings
+        defaults = MessageRouterConfiguration()
+
+        _merged_config = defaults.defaults
+        _merged_config = merge_dictionaries(_config_from_file, _merged_config)
         _merged_config = merge_dictionaries(_config, _merged_config)
         self._settings = _merged_config  # Import the config settings from apps.yaml and merge with defaults
 
@@ -138,11 +127,11 @@ class MessageRouter(hass.Hass):
             # TODO: Expand these
             if image_alert.trigger and image_alert.trigger.lower() in ["on", "off"]:
                 # If there are any state changes to HA objects, do those now
-                self.set_states_from_zone(image_alert.camera_name, image_alert.zone_id,
+                self.set_states_from_zone(image_alert.camera_name, image_alert.motion_area,
                                           image_alert.trigger, image_alert.payload_obj)
             else:
                 self.log("Unknown trigger state {} - {} - {}".format(
-                    image_alert.camera_name, image_alert.zone_id, image_alert.trigger), level="INFO")
+                    image_alert.camera_name, image_alert.motion_area, image_alert.trigger), level="INFO")
 
             # If the message had an image, create an image object and save it to disk
             if image_alert.image:

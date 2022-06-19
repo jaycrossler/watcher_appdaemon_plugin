@@ -1,0 +1,81 @@
+config:
+  zones:
+    - id: simulated
+      description: simulated for testing
+      short_name: testing
+      alert_objects:
+        - person: .7
+        - dog: .5
+      cameras:
+        - TestCam
+        - eufy1
+    - id: office_desk
+      description: testing keyboard in the office
+      expected_objects:
+        - match: keyboard
+          state_entity: binary_sensor.office_keyboard_seen
+      cameras:
+        - name: eufy1
+          rectangles: [[0, 0, .5, 1]]
+    - id: office_door
+      description: testing door in the office
+      expected_objects:
+        - match: door
+          type: door_open_closed
+          state_entity: binary_sensor.office_door
+      cameras:
+        - name: eufy1
+          rectangles: [[.5, 0, 1, 1]]
+    - id: mudroom
+      description: near the mudroom
+      cameras:
+        - annke1hd
+    - id: driveway
+      description: in the driveway
+      cameras:
+        - annke2hd
+        - reolink5hd
+      state_entities:
+        - name: binary_sensor.occupancy_courtyard
+          delay_off: 5
+      expected_objects:
+        - match: car
+          color: black
+          state_entity: binary_sensor.ford_edge_in_driveway
+          delay_off: 20
+    - id: front_door
+      description: by the front porch
+      cameras:
+        - annke3hd
+    - id: deck
+      description: on the deck
+      cameras:
+        - annke4hd
+      state_entities:
+        - name: binary_sensor.occupancy_deck
+          delay_off: 10
+    - id: back_yard
+      description: in the backyard
+      cameras:
+        - name: reolink6
+          motion_area: A
+      state_entities:
+        - name: binary_sensor.occupancy_backyard
+          delay_off: 10
+    - id: patio
+      description: on the patio
+      cameras:
+        - name: reolink6
+          motion_area: B
+    - id: hot_tub
+      description: near the hot tub
+      cameras:
+        - name: reolink6
+          motion_area: C
+    - id: basement
+      description: in the basement
+      cameras:
+        - eufy2
+      state_entities:
+        - name: binary_sensor.occupancy_basement
+          delay_off: 20
