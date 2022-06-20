@@ -2,6 +2,7 @@ import requests
 from string_helpers import *
 from MessageRouterConfiguration import MessageRouterConfiguration
 from datetime import datetime
+from Zones import Zones
 
 
 # import appdaemon.plugins.hass.hassapi as hass
@@ -11,6 +12,7 @@ class TestCommands:
         print(message)
 
     _settings = {}
+    settings = {}
 
     def initialize(self):
         # self.apiUrl = "http://homeassistant.local:8123/api/logbook"
@@ -36,6 +38,7 @@ class TestCommands:
         _merged_config = merge_dictionaries(_config_from_file, _merged_config)
         _merged_config = merge_dictionaries(_config, _merged_config)
         self._settings = _merged_config  # Import the config settings from apps.yaml and merge with defaults
+        self.settings = _merged_config
 
 
 def fetch(self, path):
@@ -51,12 +54,34 @@ def fetch(self, path):
 if __name__ == '__main__':
     TC = TestCommands()
     TC.initialize()
+    zones = Zones(settings=TC.settings)
 
-    TC.log(TC._settings)
+    cam = 'eufy1'
+    cam_match = zones.find_zones_for_camera(cam)
+    print('{}: {}'.format(cam, cam_match))
+    zones.update_state_for_camera(camera=cam, trigger='on')
+
+    cam = 'reolink6'
+    cam_match = zones.find_zones_for_camera(cam)
+    print('{}: {}'.format(cam, cam_match))
+    zones.update_state_for_camera(camera=cam, trigger='on')
+
+    cam = 'reolink6'
+    mot = 'A'
+    cam_match = zones.find_zones_for_camera('reolink6', mot)
+    print('{}: {} - motion area {}'.format(cam, cam_match, mot))
+    zones.update_state_for_camera(camera=cam, trigger='on', motion_area=mot)
+
 
 '''
+To paste into terminal:
+
+from Zones import Zones
 from test import TestCommands
-TC = TestCommands
+TC = TestCommands()
 TC.initialize()
-z = TC._settings['zones']
+zones = Zones(settings=TC._settings)
+cam_match = zones.find_zones_for_camera('eufy1')
+print('efy1: {}'.format(cam_match))
+
 '''

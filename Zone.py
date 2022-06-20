@@ -3,11 +3,11 @@ from string_helpers import *
 
 class Zone:
 
-    def __init__(self, id, settings, log=print):
-        self.id = id
-        self._settings = settings
+    def __init__(self, zone_settings, log=None):
+        self._settings = zone_settings
         self._log = log
 
+        self.id = id
         self.description = None
         self.short_name = None
         self.cameras = None
@@ -16,21 +16,25 @@ class Zone:
         self.alert_objects = None
         self.expected_objects = None
 
-        self.add_zone_info_from_settings()
+        self.add_zone_info_from_settings(zone_settings)
 
-    def add_zone_info_from_settings(self):
+    def __str__(self):
+        return f'Zone({self.id}:{self.description} - Cameras:{self.cameras})'
+
+    def __repr__(self):
+        return f'Zone({self.id}:{self.description} - Cameras:{self.cameras})'
+
+    def add_zone_info_from_settings(self, zone_settings):
         # Add more details from the settings zone object that matches the name
 
-        for zone in self._settings.zones:
-            if self.id.lower() == zone.id.lower():
-                self.short_name = get_config_var('short_name', zone, self.name)
-                self.description = get_config_var('description', zone, self.name)
-                self.cameras = get_config_var('cameras', zone, [])
-                self.state_entities = get_config_var('state_entities', zone, [])
-                self.off_timer = get_config_var('off_timer', zone, 5)
-                self.alert_objects = get_config_var('alert_objects', zone, ['person', 'dog'])
-                self.expected_objects = get_config_var('expected_objects', zone, [])
-                break
+        self.id = get_config_var('id', zone_settings, 'unknown')
+        self.short_name = get_config_var('short_name', zone_settings, self.id)
+        self.description = get_config_var('description', zone_settings, self.id)
+        self.cameras = get_config_var('cameras', zone_settings, [])
+        self.state_entities = get_config_var('state_entities', zone_settings, [])
+        self.off_timer = get_config_var('off_timer', zone_settings, 5)
+        self.alert_objects = get_config_var('alert_objects', zone_settings, ['person:.7', 'dog:.5'])
+        self.expected_objects = get_config_var('expected_objects', zone_settings, [])
 
     # ==================================
 
@@ -51,3 +55,5 @@ class Zone:
 
         if self._log:
             self._log(message, level=level)
+        else:
+            print("LOG: {}, severity: {}".format(message, level))

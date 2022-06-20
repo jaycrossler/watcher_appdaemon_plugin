@@ -6,8 +6,7 @@ from datetime import datetime
 
 class ImageAlert:
 
-    def __init__(self, camera_name, payload, settings, log=print):
-        self.payload = payload
+    def __init__(self, camera_name, payload, settings, log):
         self.camera_name = camera_name
         self._settings = settings
         self._log = log
@@ -73,6 +72,11 @@ class ImageAlert:
                     settings=self._settings,
                     log=self.log
                 )
+
+                # To save memory, don't save the full payload and obj - remove the image piece
+                _image_field = self.get_setting("routing", "image_field_name")
+                if _image_field in self.payload_obj:
+                    del self.payload_obj[_image_field]
 
         except KeyError as ex:
             self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")
@@ -150,3 +154,5 @@ class ImageAlert:
 
         if self._log:
             self._log(message, level=level)
+        else:
+            print("LOG: {}, severity: {}".format(message, level))

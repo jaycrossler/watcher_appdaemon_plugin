@@ -4,6 +4,7 @@ import appdaemon.plugins.hass.hassapi as hass
 from string_helpers import *
 from ImageAlert import ImageAlert
 from MessageRouterConfiguration import MessageRouterConfiguration
+from Zones import Zones
 
 # ---------------------------------------------------
 # Listen for multiple types of Image Action messages,
@@ -20,6 +21,7 @@ class MessageRouter(hass.Hass):
     _last_notice = ""  # TODO: Move to zone based priority posts
     _messages_sent = 0
     mqtt = None  # MQTT Object to send/receive messages
+    zones = None
 
     # Variables configurable through config settings
     _settings = {}
@@ -83,6 +85,7 @@ class MessageRouter(hass.Hass):
         self._last_notice = ""
         self._messages_sent = 0
         self.set_config_variables()
+        self.zones = Zones(settings=self._settings, log=self.log, set_state=self.set_state)
 
         # Subscribe to all MQTT messages, and then look for the ones that are image-found messages
         self.mqtt.listen_event(self.mqtt_message_received_event, "MQTT_MESSAGE")
@@ -93,6 +96,7 @@ class MessageRouter(hass.Hass):
     def mqtt_message_received_event(self, event_name, data, kwargs):
         # A message was received, handle it if it meets our filters
         try:
+            self.log("MQTT message received")
             # Local variables:
             _topic_image_alert = self.get_setting('routing', 'mqtt_topic_for_camera_alert_images')
 
@@ -124,11 +128,13 @@ class MessageRouter(hass.Hass):
             image_alert = ImageAlert(camera_name, payload, self._settings, self.log)
 
             # Trigger any HA actions based on the message contents
-            # TODO: Expand these
             if image_alert.trigger and image_alert.trigger.lower() in ["on", "off"]:
                 # If there are any state changes to HA objects, do those now
-                self.set_states_from_zone(image_alert.camera_name, image_alert.motion_area,
-                                          image_alert.trigger, image_alert.payload_obj)
+                self.zones.update_state_for_camera(
+                    camera=image_alert.camera_name,
+                    trigger=image_alert.trigger,
+                    motion_area=image_alert.motion_area)
+
             else:
                 self.log("Unknown trigger state {} - {} - {}".format(
                     image_alert.camera_name, image_alert.motion_area, image_alert.trigger), level="INFO")
@@ -150,7 +156,15 @@ class MessageRouter(hass.Hass):
                 # Remove old images to save disk space
                 image.clean_image_folders()
 
+            # TODO: Handle expected objects and have it return messaging if expectations changed
+            self.zones.check_expected_areas_for_matches(
+                camera=camera_name,
+                motion_area=image_alert.motion_area,
+                image_alert=image_alert
+            )
+
             # Send the message if it's new
+            # TODO: Incorporate priority and new zones text
             _message_text = image_alert.message_text_to_send_to_ha
             if _message_text == self._last_notice:
                 self.log("Duplicate message so not broadcast - {}".format(_message_text), level="DEBUG")
@@ -168,15 +182,3 @@ class MessageRouter(hass.Hass):
 
         except KeyError as ex:
             self.log("KeyError problem in handling image message: {}".format(ex), level="ERROR")
-
-    def set_states_from_zone(self, camera_name, zone_id, trigger, payload):
-        # TODO: Make into Zone class
-
-        state = "on" if trigger.lower() == "on" else "off"
-        if camera_name == "annke4hd":
-            self.set_state("binary_sensor.occupancy_deck", state=state)
-        elif camera_name in ["annke1hd", "annke2hd", "reolink5hd"]:
-            self.set_state("binary_sensor.occupancy_courtyard", state=state)
-        elif camera_name in ["reolink6"]:
-            self.set_state("binary_sensor.occupancy_backyard", state=state)
-        pass
