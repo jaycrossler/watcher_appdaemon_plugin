@@ -12,7 +12,6 @@ from Zones import Zones
 # ---------------------------------------------------
 
 # TODO: Add in camera tracking project
-# TODO: Use SenseAI for faces
 # TODO: Add priorities
 
 

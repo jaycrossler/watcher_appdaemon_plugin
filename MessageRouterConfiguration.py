@@ -24,5 +24,13 @@ class MessageRouterConfiguration:
         },
         'zones': [
 
-        ]
+        ],
+        'recognition': {
+            'face_server' : {
+                'look_for_faces_when_person_confidence_above': .65,
+                'url_face_finder': None,
+                'padding_around_faces': 10,
+                'url_face_recognizer': None
+            }
+        }
     }

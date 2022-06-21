@@ -1,13 +1,14 @@
 import requests
-from string_helpers import *
-from MessageRouterConfiguration import MessageRouterConfiguration
+from apps.watcher.string_helpers import *
+from apps.watcher.MessageRouterConfiguration import MessageRouterConfiguration
 from datetime import datetime
 
-from Zones import Zones
-from ImageAlert import ImageAlert
-from ImageAlertMessage import ImageAlertMessage
+from apps.watcher.Zones import Zones
+from apps.watcher.ImageAlert import ImageAlert
+from apps.watcher.ImageAlertMessage import ImageAlertMessage
 import json
-
+import requests
+import io
 
 class TestCommands:
     def log(self, message, severity="LOG"):
@@ -74,11 +75,11 @@ def get_entity(name):
 if __name__ == '__main__':
     TC = TestCommands()
     TC.initialize()
-    TC.settings['saving']['path_to_save_images'] = "."
-    TC.settings['saving']['thumbnails_subdir'] = "."
+    TC.settings['saving']['path_to_save_images'] = "test/"
+    TC.settings['saving']['thumbnails_subdir'] = "thumbnails/"
     zones = Zones(settings=TC.settings)
 
-    with open('test_msg.json') as f:
+    with open('test/test_msg.json') as f:
         test_msg_content = f.readlines()
 
     iam = ImageAlertMessage(
@@ -90,12 +91,38 @@ if __name__ == '__main__':
         settings=TC.settings)
 
     imagery = iam.image_alert.image
+    analysis = iam.image_alert.analysis
     print(imagery.image.size)
 
-    piece = imagery.get_piece_of_image([50, 50, 200, 200], padding=10)
+    interesting_rect = iam.image_alert.rectangle_of_interesting_analysis_zones()
+    piece = imagery.get_piece_of_image(interesting_rect, padding=10)
     print(piece.size)
 
-    piece.save('test_piece.jpg')
+    # buf = io.BytesIO()
+    # piece.save(buf, format='JPEG')
+    # byte_im = buf.getvalue()
+
+    # response = requests.post("http://daedelus.lan:5000/v1/vision/detection", files={"image": byte_im}).json()
+    # for object in response["predictions"]:
+    #     print("{} - {}%".format(object["label"], round(object["confidence"]*100, 1)))
+    # print(response)
+    #
+    # response = requests.post("http://daedelus.lan:5000/v1/vision/face", files={"image": byte_im}).json()
+    # print('FACE finder: {}'.format(response))
+    # for object in response["predictions"]:
+    #     face_boxes = [object["x_min"], object["y_min"], object["x_max"], object["y_max"]]
+    #     print("{} - {}%".format(face_boxes, round(object["confidence"]*100, 1)))
+    #
+    #     face = piece.copy().crop((face_boxes[0], face_boxes[1], face_boxes[2], face_boxes[3]))
+    #     face.save(buf, format='JPEG')
+    #     byte_im = buf.getvalue()
+    #
+    #     response = requests.post("http://daedelus.lan:5000/v1/vision/face/recognize", files={"image": byte_im}).json()
+    #     print('FACE recognizer: {}'.format(response))
+    #     for object_f in response["predictions"]:
+    #         print("{} - {}%".format(object_f["userid"], round(object_f["confidence"]*100, 1)))
+
+    # piece.save('test/test_piece.jpg')
 
     # image_alert = ImageAlert('annke1hd', img_t, TC.settings)
     # image = image_alert.image

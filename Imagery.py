@@ -24,7 +24,7 @@ class Imagery:
             except UnidentifiedImageError as ex:
                 self.log("Error {} PIL could not import the included image".format(ex), level="ERROR")
 
-    def save_thumbnail(self):
+    def save_thumbnail(self, snip_rectangle=None):
         # Save a thumbnail of the image
         _save_loc = self.get_setting('saving', 'path_to_save_images')
         _thumbnails_subdir = self.get_setting('saving', 'thumbnails_subdir')
@@ -36,6 +36,9 @@ class Imagery:
         try:
             # Also create a thumbnail
             img = self.image.copy()
+            if snip_rectangle:
+                img = self.get_piece_of_image(snip_rectangle, padding=20)
+
             img.thumbnail((_thumbnails_size, _thumbnails_size))
             img.save(fp=_thumbnail_path)
             self.thumbnail_url = posixpath.join(_web_path_to_images, _thumbnails_subdir, self.file_id)
@@ -47,7 +50,7 @@ class Imagery:
         except ValueError as ex:
             self.log("Error {} saving smaller image {} - {}".format(ex, self.file_id, _size), level="ERROR")
 
-    def save_full_sized(self, save_as_latest=False):
+    def save_full_sized(self, save_as_latest=False, snip_rectangle=None):
         # Save the image to disk
         if self.image:
             _save_to = self.get_setting('saving', 'path_to_save_images')
@@ -65,8 +68,13 @@ class Imagery:
             _size = self.image.size
 
             try:
-                self.image.save(path)
-                self.log("Saved image from [{}] to {} - size {}".format(_cam, path, _size), level="INFO")
+                if snip_rectangle:
+                    piece = self.get_piece_of_image(snip_rectangle, padding=20)
+                    piece.save(path)
+                    self.log("Saved clip from [{}] to {} - size {}".format(_cam, path, _size), level="INFO")
+                else:
+                    self.image.save(path)
+                    self.log("Saved image from [{}] to {} - size {}".format(_cam, path, _size), level="INFO")
             except IOError as ex:
                 self.log("Error {} saving : {} to {} - size {}".format(ex, _cam, path, _size), level="ERROR")
         else:
@@ -86,7 +94,7 @@ class Imagery:
     def get_piece_of_image(self, rectangle, padding=0):
         if self.image and self.image.width and self.image.height:
             crop_to = get_rectangle_coordinates(rectangle, self.image.width, self.image.height, padding=padding)
-            return self.image.crop((crop_to[0], crop_to[1], crop_to[2], crop_to[3]))
+            return self.image.copy().crop((crop_to[0], crop_to[1], crop_to[2], crop_to[3]))
         return False
 
     # ---------------------------------------------

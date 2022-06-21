@@ -24,7 +24,12 @@ class ImageAlertMessage:
             _topic_ha_alert = self.get_setting('routing', 'mqtt_publish_to_topic')
 
             # Create the main ImageAlert object
-            image_alert = ImageAlert(camera_name, payload, self._settings, self.log)
+            image_alert = ImageAlert(
+                camera_name=camera_name,
+                payload=payload,
+                zones=self.zones,
+                settings=self._settings,
+                log=self.log)
 
             # Trigger any HA actions based on the message contents
             if image_alert.trigger and image_alert.trigger.lower() in ["on", "off"]:
@@ -47,10 +52,13 @@ class ImageAlertMessage:
             if image_alert.image:
                 image = image_alert.image
 
+                # TODO: Move into IA
+                interesting_rect = image_alert.rectangle_of_interesting_analysis_zones()
+
                 # Save images as necessary
-                image.save_full_sized()
-                image.save_thumbnail()
-                image.save_full_sized(save_as_latest=True)
+                image.save_full_sized(snip_rectangle=interesting_rect)
+                image.save_thumbnail(snip_rectangle=interesting_rect)
+                image.save_full_sized(save_as_latest=True, snip_rectangle=interesting_rect)
 
                 # Post a message just of the URL to the 'latest' topic
                 if image.web_url:
