@@ -9,19 +9,20 @@ import time
 class Imagery:
     # Manage images
 
-    def __init__(self, file_id, payload, camera, settings, log=print):
+    def __init__(self, file_id, payload, camera, settings, log=None):
         self.file_id = file_id
-        self.payload = payload
+        self.image = None
         self.camera = camera
         self._settings = settings
-        self.binary = base64.b64decode(str(payload))
         self._log = log
         self.web_url = None
         self.thumbnail_url = None
 
-        # except:
-        #     # TODO: Add error checking
-        #     self.binary = None
+        if payload:
+            try:
+                self.image = Image.open(io.BytesIO(base64.b64decode(str(payload))))
+            except UnidentifiedImageError as ex:
+                self.log("Error {} PIL could not import the included image".format(ex), level="ERROR")
 
     def save_thumbnail(self):
         # Save a thumbnail of the image
@@ -30,61 +31,46 @@ class Imagery:
         _thumbnail_path = posixpath.join(_save_loc, _thumbnails_subdir, self.file_id)
         _thumbnails_size = self.get_setting('saving', 'thumbnail_max_size')
         _web_path_to_images = self.get_setting('saving', 'web_path_to_images')
+        _size = "unknown"
 
         try:
             # Also create a thumbnail
-            img = Image.open(io.BytesIO(self.binary))
+            img = self.image.copy()
             img.thumbnail((_thumbnails_size, _thumbnails_size))
             img.save(fp=_thumbnail_path)
             self.thumbnail_url = posixpath.join(_web_path_to_images, _thumbnails_subdir, self.file_id)
-
+            _size = img.size
             self.log("Saved a thumbnail to {}".format(_thumbnail_path), level="INFO")
 
         except FileNotFoundError as ex:
             self.log("Error {} could not save file {]".format(ex, _thumbnail_path), level="ERROR")
-        except UnidentifiedImageError as ex:
-            self.log("Error {} PIL could not import the included image".format(ex), level="ERROR")
         except ValueError as ex:
-            self.log("Error {} saving smaller image {} - {}".format(ex, self.file_id, len(self.binary)), level="ERROR")
+            self.log("Error {} saving smaller image {} - {}".format(ex, self.file_id, _size), level="ERROR")
 
-    def save_as_latest(self):
-        # Save the image as the "latest" image - # TODO: Combine with other save methods
-        _save_to = self.get_setting('saving', 'path_to_save_images')
-        _save_latest_format = self.get_setting('saving', 'save_latest_format')
-        _max_size = int(self.get_setting('saving', 'thumbnail_max_size'))
+    def save_full_sized(self, save_as_latest=False):
+        # Save the image to disk
+        if self.image:
+            _save_to = self.get_setting('saving', 'path_to_save_images')
+            if save_as_latest:
+                _save_latest_format = self.get_setting('saving', 'save_latest_format')
+                path = posixpath.join(_save_to, _save_latest_format.format("alert"))
+            else:
+                _web_path_to_images = self.get_setting('saving', 'web_path_to_images')
+                path = posixpath.join(_save_to, self.file_id)
 
-        latest_path = posixpath.join(_save_to, _save_latest_format.format("alert.jpg"))
-        _cam = self.camera
-        _file = self.file_id
-        _size = len(self.payload) if self.payload else 0
-
-        try:
-            with open(latest_path, "wb") as fh:
-                fh.write(base64.b64decode(str(self.payload)))
-                # fh.write(self.binary) # TODO - use this instead
-                self.log("Saved latest image from [{}] to {} - size {}".format(_cam, _file, _size), level="INFO")
-        except IOError as ex:
-            self.log("Error {} Could not save image: {} to {} - size {}".format(ex, _cam, _file, _size), level="ERROR")
-
-    def save_full_sized(self):
-        # Save the image file
-        _save_to = self.get_setting('saving', 'path_to_save_images')
-        _cam = self.camera
-        _file = self.file_id
-        _size = len(self.payload) if self.payload else 0
-        _web_path_to_images = self.get_setting('saving', 'web_path_to_images')
-
-        path = posixpath.join(_save_to, self.file_id)
-
-        try:
-            with open(path, "wb") as fh:
-                fh.write(base64.b64decode(str(self.payload)))
-                # fh.write(self.binary) # TODO - use this instead
-                self.log("Saved an image from [{}] to {} - size {}".format(_cam, _file, _size), level="INFO")
+                # Also save the web_url to the image
                 self.web_url = posixpath.join(_web_path_to_images, self.file_id)
 
-        except TypeError as ex:
-            self.log("Error {} Could not save image: [{}] to {} - {}".format(ex, _cam, _file, _size), level="ERROR")
+            _cam = self.camera
+            _size = self.image.size
+
+            try:
+                self.image.save(path)
+                self.log("Saved image from [{}] to {} - size {}".format(_cam, path, _size), level="INFO")
+            except IOError as ex:
+                self.log("Error {} saving : {} to {} - size {}".format(ex, _cam, path, _size), level="ERROR")
+        else:
+            self.log("Tried to save image that didn't seem to exist", level="ERROR")
 
     def clean_image_folders(self):
         # Delete old files in image directories
@@ -96,6 +82,12 @@ class Imagery:
 
             self.remove_files_older_than(_save_loc, _days_to_keep)
             self.remove_files_older_than(_thumbnail_path, _days_to_keep)
+
+    def get_piece_of_image(self, rectangle, padding=0):
+        if self.image and self.image.width and self.image.height:
+            crop_to = get_rectangle_coordinates(rectangle, self.image.width, self.image.height, padding=padding)
+            return self.image.crop((crop_to[0], crop_to[1], crop_to[2], crop_to[3]))
+        return False
 
     # ---------------------------------------------
 
@@ -130,3 +122,32 @@ class Imagery:
 
         if self._log:
             self._log(message, level=level)
+        else:
+            print("LOG: {}, severity: {}".format(message, level))
+
+
+def get_rectangle_coordinates(rectangle, width, height, padding=0):
+    o = [0, 0, 0, 0]
+
+    if (len(rectangle) == 4 and rectangle[0] <= 1.0 and rectangle[1] <= 1.0
+            and rectangle[2] <= 1.0 and rectangle[3] <= 1.0):
+
+        # assume the rectangle was given as percentage coordinates
+        o[0] = (rectangle[0] * width) - padding
+        o[1] = (rectangle[1] * height) - padding
+        o[2] = (rectangle[2] * width) + padding
+        o[3] = (rectangle[3] * height) + padding
+    elif len(rectangle) == 4:
+        o[0] = rectangle[0] - padding
+        o[1] = rectangle[1] - padding
+        o[2] = rectangle[2] + padding
+        o[3] = rectangle[3] + padding
+    else:
+        # Likely invalid rectangle
+        pass
+
+    return [clip(o[0], 0, width), clip(o[1], 0, height), clip(o[2], 0, width), clip(o[3], 0, height)]
+
+
+def clip(val, min_, max_):
+    return min_ if val < min_ else max_ if val > max_ else val

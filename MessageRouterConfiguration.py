@@ -16,7 +16,11 @@ class MessageRouterConfiguration:
             'thumbnail_max_size': 300,
             'path_to_save_images': "/config/www/appdaemon_intents/",
             'web_path_to_images': "/local/appdaemon_intents/",
-            'days_to_keep_images': None  # delete old files after n days, or None to keep everything
+            'days_to_keep_images': None,  # delete old files after n days, or None to keep everything
+            'save_latest_json_to_file': 'latest_alert_image_message.json'  # None to not save
+        },
+        'states': {
+            'default_occupancy_off_trigger': '5:00'
         },
         'zones': [
 

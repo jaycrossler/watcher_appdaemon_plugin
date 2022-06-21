@@ -5,10 +5,9 @@ from Zone import Zone
 class Zones:
     # Holder class for multiple zones.  Helps find the correct zone and track what's happening
 
-    def __init__(self, settings, log=None, set_state=None):
+    def __init__(self, settings, log=None):
         self._settings = settings
         self._log = log
-        self._set_state = set_state
 
         self.zone_list = []
 
@@ -51,8 +50,11 @@ class Zones:
 
         return found_zones
 
-    def update_state_for_camera(self, camera, trigger, motion_area=None):
+    def get_update_states_for_camera(self, camera, trigger, motion_area=None):
         matched_zones = self.find_zones_for_camera(camera=camera, motion_area=motion_area)
+
+        state_changes = []
+        _default_off_timer = self.get_setting('states', 'default_occupancy_off_trigger')
 
         for zone in matched_zones:
             if zone.state_entities:
@@ -60,19 +62,19 @@ class Zones:
                     # There is an entity, extract its name and data
                     if type(entity) == dict and 'name' in entity:
                         entity_id = entity['name']
-                        # TODO: Set to default off delay setting
-                        delay = get_config_var('delay_off', entity, "5:00")
+                        delay = get_config_var('delay_off', entity, _default_off_timer)
                     else:
                         entity_id = entity
-                        delay = "5:00"
+                        delay = _default_off_timer
                     if type(delay) == int:
                         delay = "{}:00".format(delay)
 
-                    self.set_state(entity=entity_id, state=trigger)
-                    # TODO: Handle delay
+                    state_changes.append({"entity": entity_id, "state": trigger, "delay": delay})
+        return state_changes
 
     def check_expected_areas_for_matches(self, camera, motion_area=None, image_alert=None):
         matched_zones = self.find_zones_for_camera(camera=camera, motion_area=motion_area)
+        _default_off_timer = self.get_setting('states', 'default_occupancy_off_trigger')
 
         for zone in matched_zones:
 
@@ -85,13 +87,13 @@ class Zones:
                         match_type = get_config_var('type', entity, 'exists')
                         match_entity = get_config_var('state_entity', entity, None)
                         match_color = get_config_var('color', entity, None)
-                        match_delay_off = get_config_var('delay_off', entity, "5:00")
+                        match_delay_off = get_config_var('delay_off', entity, _default_off_timer)
                     else:
                         match_model = entity
                         match_type = 'exists'
                         match_entity = None
                         match_color = None
-                        match_delay_off = "5:00"
+                        match_delay_off = _default_off_timer
                     if type(match_delay_off) == int:
                         match_delay_off = "{}:00".format(match_delay_off)
 
@@ -111,14 +113,6 @@ class Zones:
         else:
             self.log('Error - the setting config.{} not found'.format(d1), level="ERROR")
         return None
-
-    def set_state(self, entity, state, delay='5:00'):
-
-        if self._set_state:
-            self._set_state(entity, state)
-            # TODO: Set a delay and handle other options
-        else:
-            print("DEBUG Set State for {} to state: {}".format(entity, state))
 
     def log(self, message, level="INFO"):
         # Wrapper to main _log object

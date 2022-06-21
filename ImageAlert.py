@@ -6,7 +6,7 @@ from datetime import datetime
 
 class ImageAlert:
 
-    def __init__(self, camera_name, payload, settings, log):
+    def __init__(self, camera_name, payload, settings, log=None):
         self.camera_name = camera_name
         self._settings = settings
         self._log = log
@@ -77,6 +77,8 @@ class ImageAlert:
                 _image_field = self.get_setting("routing", "image_field_name")
                 if _image_field in self.payload_obj:
                     del self.payload_obj[_image_field]
+
+            self.log("==JSON: {}".format(self.payload_obj), level="INFO")
 
         except KeyError as ex:
             self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")

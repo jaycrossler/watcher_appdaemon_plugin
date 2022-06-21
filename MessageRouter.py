@@ -2,7 +2,7 @@ import appdaemon.plugins.hass.hassapi as hass
 # NOTE: Make sure AppDaemon config is set to import 'py3-pillow' as an AppDaemon system package
 
 from string_helpers import *
-from ImageAlert import ImageAlert
+from ImageAlertMessage import ImageAlertMessage
 from MessageRouterConfiguration import MessageRouterConfiguration
 from Zones import Zones
 
@@ -19,12 +19,12 @@ from Zones import Zones
 class MessageRouter(hass.Hass):
     # Internal configuration variables
     _last_notice = ""  # TODO: Move to zone based priority posts
-    _messages_sent = 0
     mqtt = None  # MQTT Object to send/receive messages
     zones = None
 
     # Variables configurable through config settings
     _settings = {}
+    last_message = None
 
     # =================================================================
 
@@ -39,7 +39,8 @@ class MessageRouter(hass.Hass):
             test_failed.append("Failed looking up routing.image_field_name, likely problem parsing _settings")
         if 'zones' not in self._settings:
             test_failed.append("Failed finding config.yaml items in _settings, maybe didn't load")
-        elif len(self._settings['zones']) and 'id' in self._settings['zones'] and self._settings['zones'][0]['id'] != 'simulated':
+        elif len(self._settings['zones']) and 'id' in self._settings['zones'] \
+                and self._settings['zones'][0]['id'] != 'simulated':
             test_failed.append("First zone in config.yaml is not 'simulated'")
 
         if not self.mqtt.is_client_connected():
@@ -83,9 +84,9 @@ class MessageRouter(hass.Hass):
         # Initialize is called by AppDaemon every time it's reset or turned off and on
         self.mqtt = self.get_plugin_api("MQTT")
         self._last_notice = ""
-        self._messages_sent = 0
         self.set_config_variables()
-        self.zones = Zones(settings=self._settings, log=self.log, set_state=self.set_state)
+        self.zones = Zones(settings=self._settings, log=self.log)
+        self.last_message = None
 
         # Subscribe to all MQTT messages, and then look for the ones that are image-found messages
         self.mqtt.listen_event(self.mqtt_message_received_event, "MQTT_MESSAGE")
@@ -108,77 +109,16 @@ class MessageRouter(hass.Hass):
                 _payload = data['payload']
                 _payload = _payload.replace('"analysis":}',
                                             '"analysis":{}}')  # Replace this to help test using BlueIris
-                self.handle_image_alert_message(_camera, _payload)
+
+                # Pass the payload to an IAM class to begin analysis
+                self.last_message = ImageAlertMessage(
+                    camera_name=_camera,
+                    payload=_payload,
+                    zones=self.zones,
+                    mqtt_publish=self.mqtt.mqtt_publish,
+                    get_entity=self.get_entity,
+                    settings=self._settings,
+                    log=self.log)
 
         except KeyError as ex:
             self.log("KeyError trying to extract topic and payload from MQTT Message: {}".format(ex), level="ERROR")
-
-    # =================================================================
-
-    def handle_image_alert_message(self, camera_name, payload):
-        # Handle messages send from a tool like Blue Iris that contains alert and possibly image data
-
-        try:
-            self.log("A MQTT message that matched the _image_alert_ topic pattern was received", level="INFO")
-
-            _topic_latest = self.get_setting('routing', 'mqtt_publish_to_for_latest_image')
-            _topic_ha_alert = self.get_setting('routing', 'mqtt_publish_to_topic')
-
-            # Create the main ImageAlert object
-            image_alert = ImageAlert(camera_name, payload, self._settings, self.log)
-
-            # Trigger any HA actions based on the message contents
-            if image_alert.trigger and image_alert.trigger.lower() in ["on", "off"]:
-                # If there are any state changes to HA objects, do those now
-                self.zones.update_state_for_camera(
-                    camera=image_alert.camera_name,
-                    trigger=image_alert.trigger,
-                    motion_area=image_alert.motion_area)
-
-            else:
-                self.log("Unknown trigger state {} - {} - {}".format(
-                    image_alert.camera_name, image_alert.motion_area, image_alert.trigger), level="INFO")
-
-            # If the message had an image, create an image object and save it to disk
-            if image_alert.image:
-                image = image_alert.image
-
-                # Save images as necessary
-                image.save_full_sized()
-                image.save_thumbnail()
-                image.save_as_latest()
-
-                # Post a message just of the URL to the 'latest' topic
-                if image.web_url:
-                    self.mqtt.mqtt_publish(_topic_latest, image.web_url)
-                    self.log("Published latest alert to {} - {}".format(_topic_latest, image.web_url), level="INFO")
-
-                # Remove old images to save disk space
-                image.clean_image_folders()
-
-            # TODO: Handle expected objects and have it return messaging if expectations changed
-            self.zones.check_expected_areas_for_matches(
-                camera=camera_name,
-                motion_area=image_alert.motion_area,
-                image_alert=image_alert
-            )
-
-            # Send the message if it's new
-            # TODO: Incorporate priority and new zones text
-            _message_text = image_alert.message_text_to_send_to_ha
-            if _message_text == self._last_notice:
-                self.log("Duplicate message so not broadcast - {}".format(_message_text), level="DEBUG")
-            elif image_alert.count_of_important_things > 0:
-                # Send a JSON package of the image alert for HA to use
-                message = image_alert.message_json_to_send_to_ha()
-                self.mqtt.mqtt_publish(_topic_ha_alert, message)
-
-                # Save that it was the last one sent to reduce duplicates
-                self._last_notice = image_alert.message_text_to_send_to_ha
-                self.log("Published to {} - {}".format(_topic_ha_alert, message), level="INFO")
-                self._messages_sent += 1
-            else:
-                self.log("Something {} - but empty so not publishing".format(_message_text), level="DEBUG")
-
-        except KeyError as ex:
-            self.log("KeyError problem in handling image message: {}".format(ex), level="ERROR")

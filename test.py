@@ -2,11 +2,13 @@ import requests
 from string_helpers import *
 from MessageRouterConfiguration import MessageRouterConfiguration
 from datetime import datetime
+
 from Zones import Zones
+from ImageAlert import ImageAlert
+from ImageAlertMessage import ImageAlertMessage
+import json
 
 
-# import appdaemon.plugins.hass.hassapi as hass
-# class TestCommands(hass.Hass):
 class TestCommands:
     def log(self, message, severity="LOG"):
         print(message)
@@ -51,26 +53,79 @@ def fetch(self, path):
     return res.text # json.loads(res.text)
 
 
+def mqtt_publish(topic, message):
+    print("MOCK MQTT: {} to {}".format(message, topic))
+
+
+class Get_entity_wrapper:
+    name = None
+
+    def __init__(self, name):
+        self.name = name
+
+    def set_state(self, state):
+        print("SET STATE FOR {} to {}".format(self.name, state))
+
+
+def get_entity(name):
+    return Get_entity_wrapper(name)
+
+
 if __name__ == '__main__':
     TC = TestCommands()
     TC.initialize()
+    TC.settings['saving']['path_to_save_images'] = "."
+    TC.settings['saving']['thumbnails_subdir'] = "."
     zones = Zones(settings=TC.settings)
 
-    cam = 'eufy1'
-    cam_match = zones.find_zones_for_camera(cam)
-    print('{}: {}'.format(cam, cam_match))
-    zones.update_state_for_camera(camera=cam, trigger='on')
+    with open('test_msg.json') as f:
+        test_msg_content = f.readlines()
 
-    cam = 'reolink6'
-    cam_match = zones.find_zones_for_camera(cam)
-    print('{}: {}'.format(cam, cam_match))
-    zones.update_state_for_camera(camera=cam, trigger='on')
+    iam = ImageAlertMessage(
+        camera_name='annke1hd',
+        payload=test_msg_content[0],
+        zones=zones,
+        mqtt_publish=mqtt_publish,
+        get_entity=get_entity,
+        settings=TC.settings)
 
-    cam = 'reolink6'
-    mot = 'A'
-    cam_match = zones.find_zones_for_camera('reolink6', mot)
-    print('{}: {} - motion area {}'.format(cam, cam_match, mot))
-    zones.update_state_for_camera(camera=cam, trigger='on', motion_area=mot)
+    imagery = iam.image_alert.image
+    print(imagery.image.size)
+
+    piece = imagery.get_piece_of_image([50, 50, 200, 200], padding=10)
+    print(piece.size)
+
+    piece.save('test_piece.jpg')
+
+    # image_alert = ImageAlert('annke1hd', img_t, TC.settings)
+    # image = image_alert.image
+
+    # img_t = open('test_msg.json')
+    # img_data = json.load(img_t)
+    # img_text = img_data['image_b64']
+    # imagery = Imagery('test.jpg', img_text, 'virtual_cam', TC.settings)
+    # imagery.save_full_sized()
+    # imagery.save_thumbnail()
+    # imagery.save_full_sized(save_as_latest=True)
+
+    # piece = imagery.get_piece_of_image([50,50,200,200], padding=10)
+    # piece.save('test_piece.jpg')
+
+    # cam = 'eufy1'
+    # cam_match = zones.find_zones_for_camera(cam)
+    # print('{}: {}'.format(cam, cam_match))
+    # zones.update_state_for_camera(camera=cam, trigger='on')
+    #
+    # cam = 'reolink6'
+    # cam_match = zones.find_zones_for_camera(cam)
+    # print('{}: {}'.format(cam, cam_match))
+    # zones.update_state_for_camera(camera=cam, trigger='on')
+    #
+    # cam = 'reolink6'
+    # mot = 'A'
+    # cam_match = zones.find_zones_for_camera('reolink6', mot)
+    # print('{}: {} - motion area {}'.format(cam, cam_match, mot))
+    # zones.update_state_for_camera(camera=cam, trigger='on', motion_area=mot)
 
 
 '''
