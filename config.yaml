@@ -4,7 +4,7 @@ config:
       look_for_faces_when_person_confidence_above: .65
       url_face_finder: http://daedelus.lan:5000/v1/vision/face
       padding_around_faces: 10
-      url_face_recognizer: http://daedelus.lan:5000/v1/vision/face/recognizer
+      url_face_recognizer: http://daedelus.lan:5000/v1/vision/face/recognize
 
   zones:
     - id: simulated
