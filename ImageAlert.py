@@ -16,8 +16,11 @@ class ImageAlert:
 
         self.image = None
         self.motion_area = None
+
+        self.zone_id = None
         self.zone_name = None
         self.zone_short_name = None
+
         self.trigger = None
         self.payload_obj = None
         self.memo = None
@@ -29,6 +32,7 @@ class ImageAlert:
 
     def interpret_camera_message(self, camera_name, payload):
         # Interpret JSON messages that have alerts in them and possibly images
+        self.log("Received payload, extracting")
 
         try:
             # TODO: Check if it's likely JSON format
@@ -77,10 +81,11 @@ class ImageAlert:
             _message, _count = self.get_image_contents_from_memo(_people)
             _past_tense = "were" if _count > 1 else "was"
 
+            # Get the event message
             self.message_text_to_send_to_ha = "{} {} seen {}".format(_message, _past_tense, self.zone_name)
             self.count_of_important_things = _count
 
-            self.log("==JSON: {}".format(self.payload_obj), level="INFO")
+            # self.log("==JSON: {}".format(self.payload_obj), level="INFO")
 
         except KeyError as ex:
             self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")
@@ -91,14 +96,17 @@ class ImageAlert:
         matched_zones = self.zones.find_zones_for_camera(self.camera_name, self.motion_area)
 
         if len(matched_zones) == 1:
+            self.zone_id = matched_zones[0].id
             self.zone_short_name = matched_zones[0].short_name
             self.zone_name = matched_zones[0].description
         elif len(matched_zones) == 0:
+            self.zone_id = 0
             self.zone_short_name = "not matched"
             self.zone_name = "{} {}".format(self.camera_name, self.motion_area)
         else:
             # more than 1 matched zone
             # TODO: Pick the best zone based on rectangles or sub zones
+            self.zone_id = matched_zones[0].id
             self.zone_short_name = matched_zones[0].short_name
             self.zone_name = matched_zones[0].description
 
@@ -195,13 +203,15 @@ class ImageAlert:
         message = ", and ".join(_msg).capitalize()
         return message, people + dogs + cars
 
-    def message_json_to_send_to_ha(self):
+    def message_json_to_send_to_ha(self, count_of_current):
         # Prepare a message in JSON format to send to Home Assistant with useful details
 
         _dtg_format = self.get_setting('routing', 'dtg_message_format')
         _dtg_format_short = self.get_setting('routing', 'dtg_message_format_short')
 
         message = self.message_text_to_send_to_ha
+        if count_of_current > 1:
+            message = "{} [{} current]".format(message, count_of_current)
 
         _time = datetime.now().strftime(_dtg_format)
         _short_time = datetime.now().strftime(_dtg_format_short)

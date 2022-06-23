@@ -2,10 +2,8 @@ import appdaemon.plugins.hass.hassapi as hass
 # NOTE: Make sure AppDaemon config is set to import 'py3-pillow' as an AppDaemon system package
 
 from string_helpers import *
-from ImageAlertMessage import ImageAlertMessage
 from MessageRouterConfiguration import MessageRouterConfiguration
-from Zones import Zones
-
+from MessageAndZoneHandler import MessageAndZoneHandler
 # ---------------------------------------------------
 # Listen for multiple types of Image Action messages,
 #   then parse and resend them with updates
@@ -17,13 +15,29 @@ from Zones import Zones
 
 class MessageRouter(hass.Hass):
     # Internal configuration variables
-    _last_notice = ""  # TODO: Move to zone based priority posts
     mqtt = None  # MQTT Object to send/receive messages
-    zones = None
 
     # Variables configurable through config settings
     _settings = {}
-    last_message = None
+    message_and_zone_handler = None
+
+    def initialize(self):
+        # Initialize is called by AppDaemon every time it's reset or turned off and on
+        self.mqtt = self.get_plugin_api("MQTT")
+        self.set_config_variables()
+
+        self.message_and_zone_handler = MessageAndZoneHandler(
+            mqtt_publish=self.mqtt.mqtt_publish,
+            get_entity=self.get_entity,
+            settings=self._settings,
+            log=self.log_wrapper
+        )
+
+        # Show errors if any tests fail
+        self.run_tests_on_config()
+
+        # Subscribe to all MQTT messages, and then look for the ones that are image-found messages
+        self.mqtt.listen_event(self.mqtt_message_received_event, "MQTT_MESSAGE")
 
     # =================================================================
 
@@ -79,24 +93,10 @@ class MessageRouter(hass.Hass):
         _merged_config = merge_dictionaries(_config, _merged_config)
         self._settings = _merged_config  # Import the config settings from apps.yaml and merge with defaults
 
-    def initialize(self):
-        # Initialize is called by AppDaemon every time it's reset or turned off and on
-        self.mqtt = self.get_plugin_api("MQTT")
-        self._last_notice = ""
-        self.set_config_variables()
-        self.zones = Zones(settings=self._settings, log=self.log)
-        self.last_message = None
-
-        # Subscribe to all MQTT messages, and then look for the ones that are image-found messages
-        self.mqtt.listen_event(self.mqtt_message_received_event, "MQTT_MESSAGE")
-
-        # Show errors if any tests fail
-        self.run_tests_on_config()
-
     def mqtt_message_received_event(self, event_name, data, kwargs):
         # A message was received, handle it if it meets our filters
         try:
-            self.log("MQTT message received")
+            # self.log("MQTT message received")
             # Local variables:
             _topic_image_alert = self.get_setting('routing', 'mqtt_topic_for_camera_alert_images')
 
@@ -109,15 +109,16 @@ class MessageRouter(hass.Hass):
                 _payload = _payload.replace('"analysis":}',
                                             '"analysis":{}}')  # Replace this to help test using BlueIris
 
-                # Pass the payload to an IAM class to begin analysis
-                self.last_message = ImageAlertMessage(
+                # An alert came through, trigger the alert handler
+                self.message_and_zone_handler.new_image_alert_message(
                     camera_name=_camera,
-                    payload=_payload,
-                    zones=self.zones,
-                    mqtt_publish=self.mqtt.mqtt_publish,
-                    get_entity=self.get_entity,
-                    settings=self._settings,
-                    log=self.log)
+                    payload=_payload
+                )
 
         except KeyError as ex:
             self.log("KeyError trying to extract topic and payload from MQTT Message: {}".format(ex), level="ERROR")
+
+    def log_wrapper(self, message, level="INFO"):
+        # Wrapper to log object
+
+        self.log(message, level=level)

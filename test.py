@@ -6,9 +6,12 @@ from datetime import datetime
 from apps.watcher.Zones import Zones
 from apps.watcher.ImageAlert import ImageAlert
 from apps.watcher.ImageAlertMessage import ImageAlertMessage
+from apps.watcher.MessageAndZoneHandler import MessageAndZoneHandler
+
 import json
 import requests
 import io
+import time
 
 class TestCommands:
     def log(self, message, severity="LOG"):
@@ -82,21 +85,29 @@ if __name__ == '__main__':
     with open('test/test_msg.json') as f:
         test_msg_content = f.readlines()
 
-    iam = ImageAlertMessage(
-        camera_name='annke1hd',
-        payload=test_msg_content[0],
-        zones=zones,
+    payload = test_msg_content[0]
+
+    message_and_zone_handler = MessageAndZoneHandler(
         mqtt_publish=mqtt_publish,
         get_entity=get_entity,
-        settings=TC.settings)
+        settings=TC.settings
+    )
 
-    imagery = iam.image_alert.image
-    analysis = iam.image_alert.analysis
-    print(imagery.image.size)
+    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
 
-    interesting_rect = iam.image_alert.rectangle_of_interesting_analysis_zones()
-    piece = imagery.get_piece_of_image(interesting_rect, padding=10)
-    print(piece.size)
+    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+
+    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+
+
+
+    # imagery = iam.image_alert.image
+    # analysis = iam.image_alert.analysis
+    # print(imagery.image.size)
+    #
+    # interesting_rect = iam.image_alert.rectangle_of_interesting_analysis_zones()
+    # piece = imagery.get_piece_of_image(interesting_rect, padding=10)
+    # print(piece.size)
 
     # buf = io.BytesIO()
     # piece.save(buf, format='JPEG')
