@@ -33,13 +33,10 @@ config:
       cameras:
         - name: eufy1
           rectangles: [[.5, 0, 1, 1]]
-    - id: mudroom
-      description: near the mudroom
-      cameras:
-        - annke1hd
     - id: driveway
       description: in the driveway
       cameras:
+        - annke1hd
         - annke2hd
         - reolink5hd
       state_entities:

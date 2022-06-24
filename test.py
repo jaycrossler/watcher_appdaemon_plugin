@@ -97,8 +97,14 @@ if __name__ == '__main__':
 
     message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
 
+    # Also play back last message
+    with open('test/latest_alert_image_message.json') as f:
+        test_msg_content = f.readlines()
+    payload = test_msg_content[0]
+
     message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
 
+    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
 
 
     # imagery = iam.image_alert.image

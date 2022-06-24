@@ -25,6 +25,7 @@ class ImageAlert:
         self.payload_obj = None
         self.memo = None
         self.analysis = None
+        self.people = None
         self.message_text_to_send_to_ha = None
         self.count_of_important_things = 0
 
@@ -74,6 +75,8 @@ class ImageAlert:
             # If face analysis exists, extract out people from those
             _people, _face_analysis_results = self.get_face_contents_from_analysis()
 
+            self.people = _people
+
             # Get the zone names from the camera titles
             self.get_zone_name_from_camera_and_zone()
 
@@ -89,7 +92,6 @@ class ImageAlert:
 
         except KeyError as ex:
             self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")
-        pass
 
     def get_zone_name_from_camera_and_zone(self):
 
@@ -134,12 +136,12 @@ class ImageAlert:
             # TODO: Get confidence from settings
             _url = _face_server['url_face_recognizer']
             response = requests.post(_url, files={"image": byte_im}).json()
-            if 'status' in response and response['status'] == 404:
+            if 'status' in response and response['status'] in [404, '404']:
                 self.log("404 Error accessing face_recognition server {}".format(_url), level="ERROR")
             elif 'predictions' in response:
                 for object_f in response["predictions"]:
                     if object_f["confidence"] > .65:
-                        people.append(object_f["userid"])
+                        people.append({"name": object_f["userid"], "confidence": object_f["confidence"]})
                 self.log('Called face recognizer, found: {}'.format(people))
             else:
                 self.log("Error accessing face_recognition server", level="ERROR")
@@ -153,7 +155,7 @@ class ImageAlert:
                     if name.lower() != "unknown":
                         # If the name is not 'unknown' add it to the list of people if unique
                         if name.title() not in people:
-                            people.append(name.title())
+                            people.append({"name": name.title(), "confidence": 0.6})
 
         return people, _face_results
 
@@ -182,12 +184,15 @@ class ImageAlert:
         if people == 1:
             text = "A person"
             if faces_list and len(faces_list):
-                text = faces_list[0]
+                text = faces_list[0]['name']
             _msg.append(text)
         elif people > 1:
             text = "{} people".format(people)
             if faces_list and len(faces_list):
-                text = ", ".join(faces_list)  # Add face names
+                face_names = []
+                for face in faces_list:
+                    face_names.append(face['name'])
+                text = ", ".join(face_names)  # Add face names
             _msg.append(text)
 
         if dogs == 1:
@@ -210,14 +215,17 @@ class ImageAlert:
         _dtg_format_short = self.get_setting('routing', 'dtg_message_format_short')
 
         message = self.message_text_to_send_to_ha
-        if count_of_current > 1:
-            message = "{} [{} current]".format(message, count_of_current)
+        # if count_of_current > 1:
+        #     message = "{} [{} current]".format(message, count_of_current)
 
         _time = datetime.now().strftime(_dtg_format)
         _short_time = datetime.now().strftime(_dtg_format_short)
+        _priority = 3
+        if count_of_current > 1:
+            _priority = 2
 
         message_package = {"message": message, "zone": self.zone_short_name,
-                           "time": _time, "short_time": _short_time}
+                           "time": _time, "short_time": _short_time, "priority": _priority}
 
         if self.image:
             message_package['image'] = self.image.web_url

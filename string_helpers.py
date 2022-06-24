@@ -6,15 +6,18 @@ import yaml
 def extract_face_predictions(analysis):
     predictions = []
     if analysis:
-        for bucket in analysis:
-            if 'api' in bucket and bucket['api'] == 'faces':
-                # find the 'faces' api if it exists
-                if 'found' in bucket:
-                    results = bucket['found']
-                    if 'success' in results and results['success'] and 'predictions' in results:
-                        # Find the 'predictions' if they exist
-                        predictions = results['predictions']
-                        break
+        try:
+            for bucket in analysis:
+                if 'api' in bucket and bucket['api'] == 'faces':
+                    # find the 'faces' api if it exists
+                    if 'found' in bucket:
+                        results = bucket['found']
+                        if 'success' in results and results['success'] and 'predictions' in results:
+                            # Find the 'predictions' if they exist
+                            predictions = results['predictions']
+                            break
+        except KeyError as ex:
+            print(ex)
     return predictions
 
 

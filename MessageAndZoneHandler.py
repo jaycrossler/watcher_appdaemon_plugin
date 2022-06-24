@@ -41,16 +41,20 @@ class MessageAndZoneHandler:
         # TODO: Pass in more detailed events to reconstruct timeline
         self.event_happened_in_zone(
             zone_id=message.image_alert.zone_id,
-            event=message.image_alert.message_text_to_send_to_ha)
+            event=message.image_alert)
 
         # Count the number of events in zones
         current = self.current_events_in_zone(zone_id=message.image_alert.zone_id)
         message.send_processed_message(mqtt_publish=self.mqtt_publish, count_of_current=len(current))
 
     def event_happened_in_zone(self, zone_id, event):
+
+        event_text = event.message_text_to_send_to_ha
+
         self.active_events.append({
             'zone_id': zone_id,
-            'message': event,
+            'message': event_text,
+            'people': event.people,
             'message_id': self.count_of_alert_messages,
             'date_time': datetime.now()
         })
