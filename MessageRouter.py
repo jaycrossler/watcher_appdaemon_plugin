@@ -36,6 +36,9 @@ class MessageRouter(hass.Hass):
         # Show errors if any tests fail
         self.run_tests_on_config()
 
+        # Connect to DB to send updates and get inputs
+        self.connect_to_hadashboard()
+
         # Subscribe to all MQTT messages, and then look for the ones that are image-found messages
         self.mqtt.listen_event(self.mqtt_message_received_event, "MQTT_MESSAGE")
 
@@ -58,6 +61,8 @@ class MessageRouter(hass.Hass):
 
         if not self.mqtt.is_client_connected():
             test_failed.append("MQTT client could not connect")
+
+        # --------------------------------------
 
         if len(test_failed):
             for err in test_failed:
@@ -121,4 +126,16 @@ class MessageRouter(hass.Hass):
     def log_wrapper(self, message, level="INFO"):
         # Wrapper to log object
 
-        self.log(message, level=level)
+        self.log(message, level=level, log="test_log")
+
+    def connect_to_hadashboard(self):
+        pass
+        # self.set_state("input_number.detail_number", state=42, namespace="watcher")
+        # self.listen_state(self.dashboard_update, "input_number.detail_number", namespace="watcher")
+
+        # self.set_state("sensor.active_events", state=42, namespace="watcher")
+
+    def dashboard_update(self, event_name, data, kwargs):
+        # self.set_state("sensor.active_events", state=data, namespace="watcher")
+
+        self.log("SENSOR: {} - {} - {}".format(event_name, data, kwargs))

@@ -135,16 +135,19 @@ class ImageAlert:
 
             # TODO: Get confidence from settings
             _url = _face_server['url_face_recognizer']
-            response = requests.post(_url, files={"image": byte_im}).json()
-            if 'status' in response and response['status'] in [404, '404']:
-                self.log("404 Error accessing face_recognition server {}".format(_url), level="ERROR")
-            elif 'predictions' in response:
-                for object_f in response["predictions"]:
-                    if object_f["confidence"] > .65:
-                        people.append({"name": object_f["userid"], "confidence": object_f["confidence"]})
-                self.log('Called face recognizer, found: {}'.format(people))
-            else:
-                self.log("Error accessing face_recognition server", level="ERROR")
+            try:
+                response = requests.post(_url, files={"image": byte_im}).json()
+                if 'status' in response and response['status'] in [404, '404']:
+                    self.log("404 Error accessing face_recognition server {}".format(_url), level="ERROR")
+                elif 'predictions' in response:
+                    for object_f in response["predictions"]:
+                        if object_f["confidence"] > .65:
+                            people.append({"name": object_f["userid"], "confidence": object_f["confidence"]})
+                    self.log('Called face recognizer, found: {}'.format(people))
+                else:
+                    self.log("Error accessing face_recognition server", level="ERROR")
+            except ConnectionError as ex:
+                self.log("Connection Error accessing face recognizer {}".format(ex))
 
         else:
             # Extract face titles from BlueIris results

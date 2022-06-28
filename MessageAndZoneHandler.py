@@ -51,22 +51,34 @@ class MessageAndZoneHandler:
 
         event_text = event.message_text_to_send_to_ha
 
+        similar_events = self.current_events_in_zone(zone_id=zone_id, remove_old=False)
+        event_id = 1
+        if len(similar_events):
+            event_id = similar_events[0]['event_id']
+        else:
+            if len(self.active_events):
+                last_event = self.active_events[-1]
+                if last_event:
+                    event_id = last_event['event_id'] + 1
+
         self.active_events.append({
             'zone_id': zone_id,
+            'event_id': event_id,
             'message': event_text,
             'people': event.people,
             'message_id': self.count_of_alert_messages,
             'date_time': datetime.now()
         })
 
-    def current_events_in_zone(self, zone_id, since_minutes=10):
+    def current_events_in_zone(self, zone_id, since_minutes=10, remove_old=True):
         events = []
         for event in self.active_events:
             if event['zone_id'] == zone_id and event['date_time'] > (datetime.now() - timedelta(minutes=since_minutes)):
                 events.append(event)
 
         # Remove old events
-        self.active_events = events
+        if remove_old:
+            self.active_events = events
 
         # TODO: Have a dashboard that shows active events per area
 
