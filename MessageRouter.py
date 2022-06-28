@@ -4,13 +4,13 @@ import appdaemon.plugins.hass.hassapi as hass
 from string_helpers import *
 from MessageRouterConfiguration import MessageRouterConfiguration
 from MessageAndZoneHandler import MessageAndZoneHandler
+
 # ---------------------------------------------------
 # Listen for multiple types of Image Action messages,
 #   then parse and resend them with updates
 # ---------------------------------------------------
 
 # TODO: Add in camera tracking project
-# TODO: Add priorities
 
 
 class MessageRouter(hass.Hass):

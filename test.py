@@ -1,17 +1,17 @@
 import requests
-from apps.watcher.string_helpers import *
-from apps.watcher.MessageRouterConfiguration import MessageRouterConfiguration
+from string_helpers import *
+from MessageRouterConfiguration import MessageRouterConfiguration
 from datetime import datetime
 
-from apps.watcher.Zones import Zones
-from apps.watcher.ImageAlert import ImageAlert
-from apps.watcher.ImageAlertMessage import ImageAlertMessage
-from apps.watcher.MessageAndZoneHandler import MessageAndZoneHandler
+from Zones import Zones
+from MessageAndZoneHandler import MessageAndZoneHandler
+# from ImageAlert import ImageAlert
+# from ImageAlertMessage import ImageAlertMessage
 
-import json
-import requests
-import io
-import time
+# import json
+# import io
+# import time
+
 
 class TestCommands:
     def log(self, message, severity="LOG"):
@@ -106,6 +106,18 @@ if __name__ == '__main__':
 
     message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
 
+    polygon_to_check = [
+        [0, 400],
+        [400, 400],
+        [400, 500],
+        [0, 500],
+        [0, 400]
+    ]
+
+    print(point_in_polygon(polygon_to_check, [100, 100]))
+    print(point_in_polygon(polygon_to_check, [300, 100]))
+    print(point_in_polygon(polygon_to_check, [300, 450]))
+    print(point_in_polygon(polygon_to_check, [1, 499]))
 
     # imagery = iam.image_alert.image
     # analysis = iam.image_alert.analysis
