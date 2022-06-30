@@ -1,3 +1,5 @@
+import json
+
 import requests
 from string_helpers import *
 from MessageRouterConfiguration import MessageRouterConfiguration
@@ -75,6 +77,17 @@ def get_entity(name):
     return Get_entity_wrapper(name)
 
 
+def what_zone_is_point_from_camera_in(camera, point, zone_list):
+    for zone in zone_list:
+        if 'cameras' in zone:
+            for cam in zone['cameras']:
+                if cam['name'] == camera and 'polygons' in cam:
+                    for poly in cam['polygons']:
+                        if point_in_polygon(poly, point):
+                            return zone['description'] if 'description' in zone else zone['id']
+    return None
+
+
 if __name__ == '__main__':
     TC = TestCommands()
     TC.initialize()
@@ -93,31 +106,27 @@ if __name__ == '__main__':
         settings=TC.settings
     )
 
-    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+    f = open('test/extracted_zones.json')
+    test_zones = json.load(f)
 
-    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+    print(what_zone_is_point_from_camera_in('annke1hd', [.5, .5], test_zones))
+    print(what_zone_is_point_from_camera_in('annke1hd', [.1, .1], test_zones))
+    print(what_zone_is_point_from_camera_in('annke1hd', [.2, .8], test_zones))
+    print(what_zone_is_point_from_camera_in('annke1hd', [.7, .7], test_zones))
+    print(what_zone_is_point_from_camera_in('annke2hd', [.5, .5], test_zones))
 
-    # Also play back last message
-    with open('test/test_msg_deck.json') as f:
-        test_msg_content = f.readlines()
-    payload = test_msg_content[0]
-
-    message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
-
-    message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
-
-    polygon_to_check = [
-        [0, 400],
-        [400, 400],
-        [400, 500],
-        [0, 500],
-        [0, 400]
-    ]
-
-    print(point_in_polygon(polygon_to_check, [100, 100]))
-    print(point_in_polygon(polygon_to_check, [300, 100]))
-    print(point_in_polygon(polygon_to_check, [300, 450]))
-    print(point_in_polygon(polygon_to_check, [1, 499]))
+    # message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+    #
+    # message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+    #
+    # # Also play back last message
+    # with open('test/test_msg_deck.json') as f:
+    #     test_msg_content = f.readlines()
+    # payload = test_msg_content[0]
+    #
+    # message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
+    #
+    # message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
 
     # imagery = iam.image_alert.image
     # analysis = iam.image_alert.analysis
