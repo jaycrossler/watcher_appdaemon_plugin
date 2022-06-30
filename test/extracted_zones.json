@@ -1,107 +1,130 @@
-[{
-    "id":"driveway",
-    "cameras":[
+{
+  "config":{
+    "zones":[{
+        "id":"driveway",
+        "description":"driveway",
+        "cameras":[
 		{"name":"annke1hd","polygons":[[[0.3242,0.3724],[0.6699,0.4401],[0.889,0.5859],[0.8211,0.6901],[0.9508,0.7682],[0.9995,0.7505],[0.9995,0.1917],[0.3304,0.1693]]]},
 		{"name":"annke2hd","polygons":[[[0.3518,0.9995],[0.3499,0.1094],[0.4922,0.12],[0.6394,0.2696],[0.8958,0.38],[0.9997,0.5194],[0.9997,0.9977]]]},
 		{"name":"reolink5hd","polygons":[[[0.2989,0.1111],[0.0,0.5171],[0.0013,0.9995],[0.7846,0.9995],[0.9108,0.6916],[0.999,0.6026],[0.999,0.1468]]]}]
-  },
-  {
-    "id":"neighbor_yard",
-    "cameras":[
+      },
+      {
+        "id":"neighbor_yard",
+        "description":"neighbor_yard",
+        "cameras":[
 		{"name":"annke1hd","polygons":[[[0.9995,0.1901],[0.8705,0.145],[0.6823,0.1241],[0.5619,0.0894],[0.3242,0.1155],[0.3427,0.1658]]]},
 		{"name":"annke2hd","polygons":[[[0.3469,0.1094],[0.1707,0.1129],[0.0014,0.1361],[0.0003,0.9995],[0.3508,0.9995]]]},
 		{"name":"reolink5hd","polygons":[[[0.3069,0.1076],[0.2778,0.1307],[0.3661,0.0],[0.9997,0.0],[0.998,0.1468]]]}]
-  },
-  {
-    "id":"mudroom_porch",
-    "description": "near the mudroom door",
-    "cameras":[
+      },
+      {
+        "id":"mudroom_porch",
+        "description":"mudroom_porch",
+        "cameras":[
 		{"name":"annke1hd","polygons":[[[0.0094,0.52],[0.2532,0.4644],[0.3211,0.3724],[0.6699,0.4401],[0.886,0.5859],[0.8088,0.697],[0.9508,0.7734],[0.3551,0.947],[0.0,0.6286]]]}]
-  },
-  {
-    "id":"front_yard",
-    "cameras":[
+      },
+      {
+        "id":"front_yard",
+        "description":"front_yard",
+        "cameras":[
 		{"name":"annke2hd","polygons":[[[0.5132,0.1361],[0.7796,0.2162],[0.9088,0.2625],[0.9008,0.3106],[0.7696,0.2732],[0.7666,0.3266],[0.6384,0.2696]]]}]
-  },
-  {
-    "id":"walkway",
-    "cameras":[
+      },
+      {
+        "id":"walkway",
+        "description":"walkway",
+        "cameras":[
 		{"name":"annke2hd","polygons":[[[0.7666,0.323],[0.7706,0.2643],[0.9088,0.291],[0.8978,0.3765]]]},
 		{"name":"reolink5hd","polygons":[[[0.9118,0.6934],[0.9997,0.6028],[0.9997,0.9995],[0.7854,0.9995]]]}]
-  },
-  {
-    "id":"deck",
-    "cameras":[
+      },
+      {
+        "id":"deck",
+        "description":"deck",
+        "cameras":[
 		{"name":"annke4hd","polygons":[[[0.1174,0.3828],[0.1452,0.3186],[0.9995,0.6029],[0.9847,0.4314],[0.7347,0.2613],[0.3644,0.2248],[0.1267,0.2023],[0.0742,0.3464]]]}]
-  },
-  {
-    "id":"backyard",
-    "cameras":[
+      },
+      {
+        "id":"backyard",
+        "description":"backyard",
+        "cameras":[
 		{"name":"annke4hd","polygons":[[[0.994,0.4297],[0.7378,0.2613],[0.3674,0.2248],[0.4755,0.1901],[0.7409,0.2283],[0.9995,0.3044]]]}]
-  },
-  {
-    "id":"computer_desk",
-    "cameras":[
+      },
+      {
+        "id":"computer_desk",
+        "description":"computer_desk",
+        "cameras":[
 		{"name":"eufy1","polygons":[[[0.0003,0.0713],[0.1585,0.3334],[0.4101,0.8697],[0.4062,0.9991],[0.0,0.9991]]]}]
-  },
-  {
-    "id":"computer_chair",
-    "cameras":[
+      },
+      {
+        "id":"computer_chair",
+        "description":"computer_chair",
+        "cameras":[
 		{"name":"eufy1","polygons":[[[0.4101,0.8697],[0.243,0.5046],[0.5152,0.5413],[0.5113,0.7963],[0.6165,0.8138],[0.645,0.4801],[0.8425,0.5517],[0.8943,0.9991],[0.4057,0.9991]]]}]
-  },
-  {
-    "id":"office_door",
-    "cameras":[
+      },
+      {
+        "id":"office_door",
+        "description":"office_door",
+        "cameras":[
 		{"name":"eufy1","polygons":[[[0.5005,0.8697],[0.527,0.3666],[0.6499,0.4102],[0.6135,0.8837]]]}]
-  },
-  {
-    "id":"bathroom_door",
-    "cameras":[
+      },
+      {
+        "id":"bathroom_door",
+        "description":"bathroom_door",
+        "cameras":[
 		{"name":"eufy1","polygons":[[[0.7619,0.5884],[0.757,0.3299],[0.8729,0.274],[0.8729,0.8749],[0.7521,0.854]]]}]
-  },
-  {
-    "id":"basement_stairs",
-    "cameras":[
+      },
+      {
+        "id":"basement_stairs",
+        "description":"basement_stairs",
+        "cameras":[
 		{"name":"eufy2","polygons":[[[0.5978,0.9728],[0.6499,0.6391],[0.8346,0.4277],[0.7724,0.9991]]]}]
-  },
-  {
-    "id":"basement",
-    "cameras":[
+      },
+      {
+        "id":"basement",
+        "description":"basement",
+        "cameras":[
 		{"name":"eufy2","polygons":[[[0.6509,0.6391],[0.8376,0.4277],[0.8336,0.2845],[0.3885,0.2722],[0.3806,0.5814],[0.1015,0.5937],[0.0062,0.8173],[0.0021,0.9991],[0.5968,0.985]]]}]
-  },
-  {
-    "id":"basement_bar",
-    "cameras":[
+      },
+      {
+        "id":"basement_bar",
+        "description":"basement_bar",
+        "cameras":[
 		{"name":"eufy2","polygons":[[[0.0,0.8222],[0.1025,0.5884],[0.3796,0.578],[0.3904,0.267],[0.0671,0.2635],[0.0,0.2648]]]}]
-  },
-  {
-    "id":"left_garage",
-    "cameras":[
+      },
+      {
+        "id":"left_garage",
+        "description":"left_garage",
+        "cameras":[
 		{"name":"reolink5hd","polygons":[[[0.0004,0.51],[0.1476,0.3088],[0.1076,0.0506],[0.0,0.1426],[0.0,0.5116]]]}]
-  },
-  {
-    "id":"right_garage",
-    "cameras":[
+      },
+      {
+        "id":"right_garage",
+        "description":"right_garage",
+        "cameras":[
 		{"name":"reolink5hd","polygons":[[[0.1076,0.047],[0.1669,0.0],[0.2547,0.0],[0.2728,0.1485],[0.1506,0.3017]]]}]
-  },
-  {
-    "id":"backyard_left",
-    "cameras":[
+      },
+      {
+        "id":"backyard_left",
+        "description":"backyard_left",
+        "cameras":[
 		{"name":"reolink6","polygons":[[[0.0054,0.7966],[0.175,0.1638],[0.2321,0.0],[0.4463,0.0],[0.4589,0.3945],[0.4568,0.4872],[0.4692,0.9994],[0.4053,0.9994],[0.3591,0.3403],[0.3273,0.4382],[0.2705,0.9994],[0.0023,0.9994]]]}]
-  },
-  {
-    "id":"pavilion",
-    "cameras":[
+      },
+      {
+        "id":"pavilion",
+        "description":"pavilion",
+        "cameras":[
 		{"name":"reolink6","polygons":[[[0.4692,0.933],[0.4568,0.4802],[0.4579,0.4207],[0.5237,0.426],[0.5525,0.4714],[0.7479,0.4277],[0.9309,0.4837],[0.8559,0.9662],[0.824,0.9802],[0.7952,0.6532],[0.6944,0.9504],[0.5967,0.9539],[0.5381,0.6882]]]}]
-  },
-  {
-    "id":"patio",
-    "cameras":[
+      },
+      {
+        "id":"patio",
+        "description":"patio",
+        "cameras":[
 		{"name":"reolink6","polygons":[[[0.8775,0.9767],[0.9968,0.9784],[0.9988,0.2529],[0.9258,0.2389],[0.9854,0.3438]]]}]
-  },
-  {
-    "id":"backyard_right",
-    "cameras":[
+      },
+      {
+        "id":"backyard_right",
+        "description":"backyard_right",
+        "cameras":[
 		{"name":"reolink6","polygons":[[[0.9988,0.2494],[0.9207,0.2337],[0.7127,0.0],[0.9988,0.0012]]]}]
+      }
+    ]
   }
-]
+}

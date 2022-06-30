@@ -111,6 +111,15 @@ def clip(val, min_, max_):
     return min_ if val < min_ else max_ if val > max_ else val
 
 
+def center_of_rect(box, image=None):
+    coord = [box['x_min'], box['y_min'], box['x_max'], box['y_max']]
+    center = [coord[0] + (coord[2] / 2), coord[1] + (coord[3] / 2)]
+    if image and image.image and image.image.height:
+        center[0] = center[0] / image.image.width
+        center[1] = center[1] / image.image.height
+    return center 
+
+
 def point_in_polygon(polygon, point):
     """
     From: https://www.algorithms-and-technologies.com/point_in_polygon/python

@@ -1,5 +1,13 @@
 import json
 from pathlib import Path
+import ruamel.yaml
+
+
+def yaml_list(*l_vals):
+    ret = ruamel.yaml.comments.CommentedSeq(l_vals)
+    ret.fa.set_flow_style()
+    return ret
+
 
 directory_to_find_json_files = 'test/json_maps/'
 
@@ -46,7 +54,7 @@ if __name__ == '__main__':
                 points = s['points']
 
                 # Craft the points of the polygon by converting to percentages
-                percentage_points = []
+                percentage_points = yaml_list()
                 for p in points:
                     x = p[0] / width
                     y = p[1] / height
@@ -67,11 +75,23 @@ if __name__ == '__main__':
                         if not exists_cam:
                             existing['cameras'].append({"name": cam, "polygons": [percentage_points]})
                 if not exists_zone:
-                    new_zone = {"id": label, "cameras": [{"name": cam, "polygons": [percentage_points]}]}
+                    new_zone = {"id": label, "description": label, "cameras": [{"name": cam, "polygons": [percentage_points]}]}
                     output.append(new_zone)
+
+    output = {"config": {"zones": output}}
 
     with open('test/extracted_zones.json', 'w', encoding='utf-8') as f:
         out_text = json.dumps(output, indent=2, separators=(',', ':'), cls=MyJSONEncoder)
         out_text = out_text.replace('{"name"', '\n\t\t{"name"')
 
         f.write(out_text)
+
+    with open(r'test/extracted_zones.yaml', 'w') as file:
+        yaml = ruamel.yaml.YAML()
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        yaml.width = 200
+        yaml.preserve_quotes = True
+
+#        yaml.indent(mapping=2, sequence=4, offset=2)
+#        yaml.default_flow_style = False
+        yaml.dump(output, file)

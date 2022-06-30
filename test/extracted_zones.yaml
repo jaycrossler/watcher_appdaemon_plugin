@@ -1,14 +1,7 @@
 config:
-  recognition:
-    face_server:
-      look_for_faces_when_person_confidence_above: .65
-      url_face_finder: http://daedelus.lan:5000/v1/vision/face
-      padding_around_faces: 10
-      url_face_recognizer: http://daedelus.lan:5000/v1/vision/face/recognize
-
   zones:
     - id: driveway
-      description: on the driveway
+      description: driveway
       state_entities:
         - name: binary_sensor.occupancy_courtyard
           delay_off: 5

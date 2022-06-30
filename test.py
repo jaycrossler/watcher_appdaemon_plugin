@@ -106,27 +106,27 @@ if __name__ == '__main__':
         settings=TC.settings
     )
 
-    f = open('test/extracted_zones.json')
-    test_zones = json.load(f)
+    # f = open('test/extracted_zones.json')
+    # test_zones = json.load(f)
+    #
+    # print(what_zone_is_point_from_camera_in('annke1hd', [.5, .5], test_zones))
+    # print(what_zone_is_point_from_camera_in('annke1hd', [.1, .1], test_zones))
+    # print(what_zone_is_point_from_camera_in('annke1hd', [.2, .8], test_zones))
+    # print(what_zone_is_point_from_camera_in('annke1hd', [.7, .7], test_zones))
+    # print(what_zone_is_point_from_camera_in('annke2hd', [.5, .5], test_zones))
 
-    print(what_zone_is_point_from_camera_in('annke1hd', [.5, .5], test_zones))
-    print(what_zone_is_point_from_camera_in('annke1hd', [.1, .1], test_zones))
-    print(what_zone_is_point_from_camera_in('annke1hd', [.2, .8], test_zones))
-    print(what_zone_is_point_from_camera_in('annke1hd', [.7, .7], test_zones))
-    print(what_zone_is_point_from_camera_in('annke2hd', [.5, .5], test_zones))
+    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
 
-    # message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
-    #
-    # message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
-    #
-    # # Also play back last message
-    # with open('test/test_msg_deck.json') as f:
-    #     test_msg_content = f.readlines()
-    # payload = test_msg_content[0]
-    #
-    # message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
-    #
-    # message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
+    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
+
+    # Also play back last message
+    with open('test/test_msg_deck.json') as f:
+        test_msg_content = f.readlines()
+    payload = test_msg_content[0]
+
+    message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
+
+    message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
 
     # imagery = iam.image_alert.image
     # analysis = iam.image_alert.analysis

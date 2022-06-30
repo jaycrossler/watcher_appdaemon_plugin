@@ -80,6 +80,27 @@ class ImageAlert:
             # Get the zone names from the camera titles
             self.get_zone_name_from_camera_and_zone()
 
+            # TODO: Cleanup - testing this
+            if self.analysis and len(self.analysis) and 'found' in self.analysis[0] and 'predictions' in self.analysis[0]['found']:
+                person_boxes = []
+                car_boxes = []
+                dog_boxes = []
+                for box in self.analysis[0]['found']['predictions']:
+                    if 'label' in box and box['label'] == 'person' and 'confidence' in box and box['confidence'] > .6:
+                        person_boxes.append(box)
+                    # if 'label' in box and box['label'] in ['car','truck','bus'] and 'confidence' in box and box['confidence'] > .6:
+                    #     car_boxes.append(box)
+                    # if 'label' in box and box['label'] == 'dog' and 'confidence' in box and box['confidence'] > .6:
+                    #     dog_boxes.append(box)
+                for box in person_boxes:
+                    matched_zones = self.what_zones_are_point_from_camera_in(
+                        camera=camera_name,
+                        point=center_of_rect(box, self.image))
+                    if len(matched_zones):
+                        self.zone_id = matched_zones[0].id
+                        self.zone_short_name = matched_zones[0].short_name
+                        self.zone_name = matched_zones[0].description
+
             # Build the alert message from what was in the picture
             _message, _count = self.get_image_contents_from_memo(_people)
             _past_tense = "were" if _count > 1 else "was"
@@ -92,6 +113,19 @@ class ImageAlert:
 
         except KeyError as ex:
             self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")
+
+    def what_zones_are_point_from_camera_in(self, camera, point, ):
+        zones = []
+        for zone in self.zones.zone_list:
+            for cam in zone.cameras:
+                # TODO: Integrate with zone.find_zones_for_camera
+                if type(cam) == dict:
+                    if 'name' in cam and cam['name'] == camera and 'polygons' in cam:
+                        for poly in cam['polygons']:
+                            if point_in_polygon(poly, point):
+                                zones.append(zone)
+                            # return zone['description'] if 'description' in zone else zone['id']
+        return zones
 
     def get_zone_name_from_camera_and_zone(self):
 
