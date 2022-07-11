@@ -3,7 +3,7 @@ import json
 import requests
 from string_helpers import *
 from MessageRouterConfiguration import MessageRouterConfiguration
-from datetime import datetime
+import random
 
 from Zones import Zones
 from MessageAndZoneHandler import MessageAndZoneHandler
@@ -14,17 +14,22 @@ from MessageAndZoneHandler import MessageAndZoneHandler
 # import io
 # import time
 
+VERBOSE = False
+
+
+def log(message, level="LOG"):
+    if VERBOSE or level in ["ERROR"]:
+        print(message)
+
 
 class TestCommands:
-    def log(self, message, severity="LOG"):
-        print(message)
+    log = log
 
     _settings = {}
     settings = {}
 
     def initialize(self):
         # self.apiUrl = "http://homeassistant.local:8123/api/logbook"
-        now = datetime.now()
         self.log("===========Test Module Loaded========")
 
         self.set_config_variables()
@@ -70,11 +75,72 @@ class Get_entity_wrapper:
         self.name = name
 
     def set_state(self, state):
-        print("SET STATE FOR {} to {}".format(self.name, state))
+        if VERBOSE:
+            print("SET STATE FOR {} to {}".format(self.name, state))
 
 
 def get_entity(name):
     return Get_entity_wrapper(name)
+
+
+def mod_payload_for_testing(payload, person_pct, people, x=1000, y=1000):
+    payload_mod = json.loads(payload)
+
+    people_text = 'person:{}%'.format(person_pct)
+    if people and type(people) == list and len(people):
+        people_arr = []
+
+        # Add in predictions to face a face recognizer payload
+        pred = []
+        for p in people:
+            pred.append({'confidence': random.randint(person_pct-30, 99), 'label': p, 'userid': p})
+        payload_mod['analysis'].append({"api": "faces", 'found': {'success': True, 'predictions': pred}})
+
+        # Build the "person:" memo text
+        for i in range(len(people)):
+            people_arr.append('person:{}%'.format(random.randint(person_pct-30, 99)))
+        people_text = ",".join(people_arr)
+
+        if len(payload_mod['analysis']) and 'found' in payload_mod['analysis'][0] and 'predictions' in payload_mod['analysis'][0]['found']:
+            person = {'label': 'person', 'confidence': 0.7067128, 'y_min': 1175, 'x_min': 1223, 'y_max': 2062, 'x_max': 1730}
+
+            # Get the person value if exists, delete it
+            for i, box in enumerate(payload_mod['analysis'][0]['found']['predictions']):
+                if box['label'] == 'person':
+                    person = box
+                    del payload_mod['analysis'][0]['found']['predictions'][i]
+
+            # Add more simulated people
+            for i in range(len(people)):
+                new_person = person
+                new_person['confidence'] = random.randint(person_pct-30, 99)/100
+                new_person['x_min'] += random.randint(-x, x)
+                new_person['y_min'] += random.randint(-y, y)
+                new_person['x_max'] += random.randint(-x, x)
+                new_person['y_max'] += random.randint(-y, y)
+                payload_mod['analysis'][0]['found']['predictions'].append(new_person)
+
+
+    payload_mod['memo'] = people_text
+
+    return json.dumps(payload_mod)
+
+
+def write_array_to_test_timeline(output_items, output_groups, css_groups, earliest, latest):
+    filename_fm = "timeline/test_source.html"
+    filename_to = "timeline/test.html"
+    if os.path.exists(filename_fm):
+        with open(filename_fm, 'r') as source_file:
+            source_file_text = source_file.read()
+            new_text = source_file_text.replace("INSERT_ITEM_ARRAY_HERE", str(output_items))
+            new_text = new_text.replace("INSERT_GROUP_ARRAY_HERE", str(output_groups))
+            new_text = new_text.replace("INSERT_GROUP_CSS_HERE", str(css_groups))
+
+            options = {"start": earliest, "end": latest, "tooltip": {"followMouse": True, "overflowMethod": 'cap'}}
+            new_text = new_text.replace("INSERT_OPTIONS_SETTINGS_HERE", json.dumps(options))
+
+            with open(filename_to, 'w') as to_file:
+                to_file.write(new_text)
 
 
 def what_zone_is_point_from_camera_in(camera, point, zone_list):
@@ -92,41 +158,78 @@ if __name__ == '__main__':
     TC = TestCommands()
     TC.initialize()
     TC.settings['saving']['path_to_save_images'] = "test/"
+    TC.settings['saving']['web_path_to_images'] = "../test/"
     TC.settings['saving']['thumbnails_subdir'] = "thumbnails/"
+    TC.settings['routing']['mqtt_publish_to_for_latest_image'] = None
     zones = Zones(settings=TC.settings)
 
     with open('test/test_msg.json') as f:
         test_msg_content = f.readlines()
 
-    payload = test_msg_content[0]
+    payload_driveway = test_msg_content[0]
 
+    # Build the major "handler" that routes messages into alert groups
     message_and_zone_handler = MessageAndZoneHandler(
         mqtt_publish=mqtt_publish,
         get_entity=get_entity,
-        settings=TC.settings
+        settings=TC.settings,
+        log=log
     )
 
-    # f = open('test/extracted_zones.json')
-    # test_zones = json.load(f)
-    #
-    # print(what_zone_is_point_from_camera_in('annke1hd', [.5, .5], test_zones))
-    # print(what_zone_is_point_from_camera_in('annke1hd', [.1, .1], test_zones))
-    # print(what_zone_is_point_from_camera_in('annke1hd', [.2, .8], test_zones))
-    # print(what_zone_is_point_from_camera_in('annke1hd', [.7, .7], test_zones))
-    # print(what_zone_is_point_from_camera_in('annke2hd', [.5, .5], test_zones))
+    # Load payload as a message, then change variables and load a few more times for testing
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke1hd', payload=payload_driveway, seconds_offset=-60*50)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke1hd', payload=payload_driveway, seconds_offset=-60*20)
+    payload = mod_payload_for_testing(payload_driveway, person_pct=60, people=['jay'], x=50, y=50)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke1hd', payload=payload, seconds_offset=-60*10)
+    payload = mod_payload_for_testing(payload_driveway, person_pct=60, people=['jay', 'jackie'], x=100, y=100)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke1hd', payload=payload, seconds_offset=-60*6)
+    payload = mod_payload_for_testing(payload_driveway, person_pct=80, people=['jay', 'jackie', 'julian'], x=200, y=200)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke1hd', payload=payload, seconds_offset=-60*2)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke1hd', payload=payload_driveway)
 
-    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
-
-    message_and_zone_handler.new_image_alert_message(camera_name='annke1hd', payload=payload)
-
-    # Also play back last message
+    # Build deck messages to test
     with open('test/test_msg_deck.json') as f:
         test_msg_content = f.readlines()
-    payload = test_msg_content[0]
+    payload_deck = test_msg_content[0]
 
-    message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke4hd', payload=payload_deck, seconds_offset=-60*5)
 
-    message_and_zone_handler.new_image_alert_message(camera_name='annke4hd', payload=payload)
+    payload = mod_payload_for_testing(
+        payload_deck, person_pct=60, people=['jay', 'jackie'], x=200, y=200)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke4hd', payload=payload, seconds_offset=-60*4.1)
+
+    payload = mod_payload_for_testing(
+        payload_deck, person_pct=70, people=['jackie'], x=200, y=200)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke4hd', payload=payload, seconds_offset=-60*3.5)
+
+    payload = mod_payload_for_testing(
+        payload_deck, person_pct=70, people=['jackie'], x=200, y=200)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke4hd', payload=payload, seconds_offset=-60*2.1)
+
+    payload = mod_payload_for_testing(
+        payload_deck, person_pct=80, people=['jackie'], x=120, y=120)
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke4hd', payload=payload, seconds_offset=-60*1.1)
+
+    message_and_zone_handler.new_image_alert_message(
+        camera_name='annke4hd', payload=payload_deck)
+
+    # Build the test timeline file
+    timeline_json_items, earliest, latest = message_and_zone_handler.alert_groups.timeline_json_items()
+    timeline_json_groups = message_and_zone_handler.alert_groups.timeline_json_groups(show_all=False)
+    timeline_css_groups = message_and_zone_handler.alert_groups.timeline_css_groups()
+    write_array_to_test_timeline(timeline_json_items, timeline_json_groups, timeline_css_groups, earliest, latest)
+
 
     # imagery = iam.image_alert.image
     # analysis = iam.image_alert.analysis

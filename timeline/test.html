@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>
+      Timeline | Watcher Events
+    </title>
+
+    <link
+      href="vis-timeline-graph2d.min.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script
+      type="text/javascript"
+      src="vis-timeline-graph2d.min.js"
+    ></script>
+    <link href="materialdesignicons.min.css" rel="stylesheet">
+    <style>
+      body, html {
+        font-family: arial, sans-serif;
+        font-size: 11pt;
+      }
+
+      #visualization {
+        box-sizing: border-box;
+        width: 100%;
+        height: 300px;
+      }
+      .vis-item .vis-item-content {
+        padding:2px;
+      }
+      .vis-item .vis-item-content img {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 2px solid blue;
+      }
+      .vis-item .vis-item-overflow .vis-item-content img {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        border: 2px solid black;
+      }
+
+      .vis-item.courtyard { border-color: #772dd2; color: white; }
+      .vis-label.vis-group-level-0.courtyard { background-color: #772dd2; color: white; }
+      .vis-item.vis-background.bg1 { background-color: #772dd2; opacity:0.5; }
+      .vis-item.vis-background.bg1-1 { background-color: #8c1f93; opacity:0.5; }
+      .vis-item.front_yard { border-color: #aa79d2; color: black; }
+      .vis-label.vis-group-level-0.front_yard { background-color: #aa79d2; color: black; }
+      .vis-item.deck { border-color: #3b2d86; color: white; }
+      .vis-label.vis-group-level-0.deck { background-color: #3b2d86; color: white; }
+      .vis-item.vis-background.bg3 { background-color: #3b2d86; opacity:0.5; }
+      .vis-item.back_yard { border-color: #b587c5; color: black; }
+      .vis-label.vis-group-level-0.back_yard { background-color: #b587c5; color: black; }
+      .vis-item.jays_office { border-color: #75e06c; color: black; }
+      .vis-label.vis-group-level-0.jays_office { background-color: #75e06c; color: black; }
+      .vis-item.basement { border-color: #b2c587; color: black; }
+      .vis-label.vis-group-level-0.basement { background-color: #b2c587; color: black; }
+
+
+   #searchbar{
+     padding: 15px;
+     border-radius: 10px;
+   }
+
+   input[type=text] {
+      width: 20%;
+      -webkit-transition: width 0.15s ease-in-out;
+      transition: width 0.15s ease-in-out;
+   }
+
+   /* When the input field gets focus,
+        change its width to 100% */
+   input[type=text]:focus {
+     width: 50%;
+   }
+
+   .pressed { background-color: gray; border: 1px solid black;}
+
+      </style>
+
+  </head>
+
+  <body>
+    <div id="title_bar">
+      <input id="searchbar" onkeyup="search_events()" type="text" name="search" placeholder="Search.."/>
+      <button id="show_all_groups" onclick="show_all_groups()" oninput="show_all_groups()">Show All Groups</button>
+    </div>
+
+    <div id="visualization"></div>
+
+    <script type="text/javascript">
+      // DOM element where the Timeline will be attached
+      var container = document.getElementById("visualization");
+
+      var groups = new vis.DataSet(
+      [
+  {
+    "id": 1,
+    "content": "Courtyard",
+    "visible": true,
+    "className": "courtyard"
+  },
+  {
+    "id": 2,
+    "content": "Front Yard",
+    "visible": false,
+    "className": "front_yard"
+  },
+  {
+    "id": 3,
+    "content": "Deck",
+    "visible": true,
+    "className": "deck"
+  },
+  {
+    "id": 4,
+    "content": "Back Yard",
+    "visible": false,
+    "className": "back_yard"
+  },
+  {
+    "id": 5,
+    "content": "Jays Office",
+    "visible": false,
+    "className": "jays_office"
+  },
+  {
+    "id": 6,
+    "content": "Basement",
+    "visible": false,
+    "className": "basement"
+  }
+]
+      );
+
+      var items = new vis.DataSet(
+      [
+  {
+    "id": "1.2.1",
+    "group": 1,
+    "className": "courtyard",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,person,car,driveway",
+    "title": "A Person Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:03:07"
+  },
+  {
+    "id": "1.2.2",
+    "group": 1,
+    "className": "courtyard",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,Jay,driveway",
+    "title": "Jay Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:13:07"
+  },
+  {
+    "id": "1.2.3",
+    "group": 1,
+    "className": "courtyard",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,person,Jay,Jackie,driveway",
+    "title": "Jay, Jackie Were Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:17:07"
+  },
+  {
+    "id": "1.2.4",
+    "group": 1,
+    "className": "courtyard",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,person,person,Jay,Jackie,Julian,driveway",
+    "title": "Jay, Jackie, Julian Were Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:21:07"
+  },
+  {
+    "id": "1.2.5",
+    "group": 1,
+    "className": "courtyard",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,person,car,driveway",
+    "title": "A Person Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:23:07"
+  },
+  {
+    "id": "bg-1",
+    "content": "<img src='./human-male.png' data='person' onclick='search_icon(this)' title='Jay'><img src='./human-female.png' data='person' onclick='search_icon(this)' title='Jackie'><img src='./human-male.png' data='person' onclick='search_icon(this)' title='Julian'><img src='./car.png' data='car' onclick='search_icon(this)' title='Car'>",
+    "className": "bg1",
+    "type": "background",
+    "group": 1,
+    "start": "10/07/2022 21:00:07",
+    "end": "10/07/2022 21:26:07"
+  },
+  {
+    "id": "1.1.1",
+    "group": 1,
+    "className": "courtyard",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,person,car,driveway",
+    "title": "A Person Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 20:33:06"
+  },
+  {
+    "id": "bg-1.1",
+    "content": "<img src='./human-greeting.png' data='person' onclick='search_icon(this)' title='Person'><img src='./car.png' data='car' onclick='search_icon(this)' title='Car'>",
+    "className": "bg1-1",
+    "type": "background",
+    "group": 1,
+    "start": "10/07/2022 20:30:06",
+    "end": "10/07/2022 20:36:06"
+  },
+  {
+    "id": "3.1.1",
+    "group": 3,
+    "className": "deck",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,person,car,deck",
+    "title": "A Person Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:18:07"
+  },
+  {
+    "id": "3.1.2",
+    "group": 3,
+    "className": "deck",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,person,Jay,Jackie,deck",
+    "title": "Jay, Jackie Were Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:19:01"
+  },
+  {
+    "id": "3.1.3",
+    "group": 3,
+    "className": "deck",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,Jackie,deck",
+    "title": "Jackie Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:19:37"
+  },
+  {
+    "id": "3.1.4",
+    "group": 3,
+    "className": "deck",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,Jackie,deck",
+    "title": "Jackie Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:21:01"
+  },
+  {
+    "id": "3.1.5",
+    "group": 3,
+    "className": "deck",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,car,person,Jackie,deck",
+    "title": "Jackie Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:22:01"
+  },
+  {
+    "id": "3.1.6",
+    "group": 3,
+    "className": "deck",
+    "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "tags": "chair,car,tennis racket,person,car,deck",
+    "title": "A Person Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
+    "type": "point",
+    "start": "10/07/2022 21:23:08"
+  },
+  {
+    "id": "bg-3",
+    "content": "<img src='./human-male.png' data='person' onclick='search_icon(this)' title='Jay'><img src='./human-female.png' data='person' onclick='search_icon(this)' title='Jackie'><img src='./car.png' data='car' onclick='search_icon(this)' title='Car'>",
+    "className": "bg3",
+    "type": "background",
+    "group": 3,
+    "start": "10/07/2022 21:15:07",
+    "end": "10/07/2022 21:26:08"
+  }
+]
+      );
+
+      // Configuration for the Timeline
+      var options = {"start": "10/07/2022 20:27:06", "end": "10/07/2022 21:29:08",
+       "tooltip": {"followMouse": true, "overflowMethod": "cap"}, showCurrentTime: true};
+
+      // Create a Timeline
+      var timeline = new vis.Timeline(container);
+      timeline.setOptions(options);
+      timeline.setGroups(groups);
+      timeline.setItems(items);
+
+      <!-- Add a click handler to all title icons     -->
+      timeline.on('click', function (properties) {
+          el = properties.event.srcElement;
+          if (el.className == 'vis-item-overflow'){
+            search_events('');
+          } else {
+            search_events(el.title);
+          }
+          document.getElementById('searchbar').value = el.title;
+      });
+
+      function search_events(input){
+         if (typeof(input) == "undefined") {
+           let input = document.getElementById('searchbar').value;
+         }
+
+         input = input.toLowerCase();
+         items.forEach(function (item, properties, senderId) {
+          if (item && item.tags && item.type && item.type != "background") {
+            tags = item.tags.toLowerCase();
+            if (tags.indexOf(input) >= 0) {
+              item.content = item.original_content;
+            } else {
+              item.content = 'x';
+            }
+          }
+         });
+         timeline.setItems(items);
+      }
+
+      function show_all_groups() {
+        groups.forEach(function (item, properties, senderId) {
+          item.visible=true;
+        });
+        timeline.setGroups(groups);
+      }
+    </script>
+
+<!--    <i class="mdi mdi-cloud"></i>-->
+<!--  <span class='mdi mdi-car'></span>-->
+<!--  <span class='mdi mdi-dog'></span>-->
+<!--  <span class='mdi mdi-human'></span>-->
+
+  </body>
+</html>

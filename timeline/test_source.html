@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>
+      Timeline | Watcher Events
+    </title>
+
+    <link
+      href="vis-timeline-graph2d.min.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script
+      type="text/javascript"
+      src="vis-timeline-graph2d.min.js"
+    ></script>
+    <link href="materialdesignicons.min.css" rel="stylesheet">
+    <style>
+      body, html {
+        font-family: arial, sans-serif;
+        font-size: 11pt;
+      }
+
+      #visualization {
+        box-sizing: border-box;
+        width: 100%;
+        height: 300px;
+      }
+      .vis-item .vis-item-content {
+        padding:2px;
+      }
+      .vis-item .vis-item-content img {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 2px solid blue;
+      }
+      .vis-item .vis-item-overflow .vis-item-content img {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        border: 2px solid black;
+      }
+
+INSERT_GROUP_CSS_HERE
+
+   #searchbar{
+     padding: 15px;
+     border-radius: 10px;
+   }
+
+   input[type=text] {
+      width: 20%;
+      -webkit-transition: width 0.15s ease-in-out;
+      transition: width 0.15s ease-in-out;
+   }
+
+   /* When the input field gets focus,
+        change its width to 100% */
+   input[type=text]:focus {
+     width: 50%;
+   }
+
+   .pressed { background-color: gray; border: 1px solid black;}
+
+      </style>
+
+  </head>
+
+  <body>
+    <div id="title_bar">
+      <input id="searchbar" onkeyup="search_events()" type="text" name="search" placeholder="Search.."/>
+      <button id="show_all_groups" onclick="show_all_groups()" oninput="show_all_groups()">Show All Groups</button>
+    </div>
+
+    <div id="visualization"></div>
+
+    <script type="text/javascript">
+      // DOM element where the Timeline will be attached
+      var container = document.getElementById("visualization");
+
+      var groups = new vis.DataSet(
+      INSERT_GROUP_ARRAY_HERE
+      );
+
+      var items = new vis.DataSet(
+      INSERT_ITEM_ARRAY_HERE
+      );
+
+      // Configuration for the Timeline
+      var options = INSERT_OPTIONS_SETTINGS_HERE;
+
+      // Create a Timeline
+      var timeline = new vis.Timeline(container);
+      timeline.setOptions(options);
+      timeline.setGroups(groups);
+      timeline.setItems(items);
+
+      <!-- Add a click handler to all title icons to search on the title -->
+      timeline.on('click', function (properties) {
+          el = properties.event.srcElement;
+          if (el.className == 'vis-item-overflow'){
+            search_events('');
+          } else {
+            search_events(el.title);
+          }
+          document.getElementById('searchbar').value = el.title;
+      });
+
+      function search_events(input){
+         if (typeof(input) == "undefined") {
+           let input = document.getElementById('searchbar').value;
+         }
+
+         input = input.toLowerCase();
+         items.forEach(function (item, properties, senderId) {
+          if (item && item.tags && item.type && item.type != "background") {
+            tags = item.tags.toLowerCase();
+            if (tags.indexOf(input) >= 0) {
+              item.content = item.original_content;
+            } else {
+              item.content = 'x';
+            }
+          }
+         });
+         timeline.setItems(items);
+      }
+
+      function show_all_groups() {
+        groups.forEach(function (item, properties, senderId) {
+          item.visible=true;
+        });
+        timeline.setGroups(groups);
+      }
+    </script>
+
+<!--    <i class="mdi mdi-cloud"></i>-->
+<!--  <span class='mdi mdi-car'></span>-->
+<!--  <span class='mdi mdi-dog'></span>-->
+<!--  <span class='mdi mdi-human'></span>-->
+
+  </body>
+</html>

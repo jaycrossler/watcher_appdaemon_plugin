@@ -5,10 +5,17 @@ config:
       url_face_finder: http://daedelus.lan:5000/v1/vision/face
       padding_around_faces: 10
       url_face_recognizer: http://daedelus.lan:5000/v1/vision/face/recognize
+    people_matcher_icons:
+      jay: human-male
+      jackie: human-female
+      julian: human-male
+      jasmine: human-female
+      barbara: human-female
 
   zones:
     - id: driveway
-      description: on the driveway
+      alert_group: courtyard
+      description: in the driveway
       state_entities:
         - name: binary_sensor.occupancy_courtyard
           delay_off: 5
@@ -28,11 +35,13 @@ config:
           polygons:
             - [[0.2989, 0.1111], [0.0, 0.5171], [0.0013, 0.9995], [0.7846, 0.9995], [0.9108, 0.6916], [0.999, 0.6026], [0.999, 0.1468]]
     - id: front_door
+      alert_group: front yard
       description: by the front porch
       cameras:
         - annke3hd
     - id: neighbor_yard
-      description: in Jenn's yard
+      alert_group: courtyard
+      description: near Jenn's yard
       cameras:
         - name: annke1hd
           polygons:
@@ -44,19 +53,22 @@ config:
           polygons:
             - [[0.3069, 0.1076], [0.2778, 0.1307], [0.3661, 0.0], [0.9997, 0.0], [0.998, 0.1468]]
     - id: mudroom_porch
+      alert_group: courtyard
       description: near the mudroom door
       cameras:
         - name: annke1hd
           polygons:
             - [[0.0094, 0.52], [0.2532, 0.4644], [0.3211, 0.3724], [0.6699, 0.4401], [0.886, 0.5859], [0.8088, 0.697], [0.9508, 0.7734], [0.3551, 0.947], [0.0, 0.6286]]
     - id: front_yard
+      alert_group: front yard
       description: in the front yard
       cameras:
         - name: annke2hd
           polygons:
             - [[0.5132, 0.1361], [0.7796, 0.2162], [0.9088, 0.2625], [0.9008, 0.3106], [0.7696, 0.2732], [0.7666, 0.3266], [0.6384, 0.2696]]
     - id: walkway
-      description: ont the front sidewalk
+      alert_group: front yard
+      description: on the front sidewalk
       cameras:
         - name: annke2hd
           polygons:
@@ -65,6 +77,7 @@ config:
           polygons:
             - [[0.9118, 0.6934], [0.9997, 0.6028], [0.9997, 0.9995], [0.7854, 0.9995]]
     - id: deck
+      alert_group: deck
       description: on the deck
       state_entities:
         - name: binary_sensor.occupancy_deck
@@ -74,6 +87,7 @@ config:
           polygons:
             - [[0.1174, 0.3828], [0.1452, 0.3186], [0.9995, 0.6029], [0.9847, 0.4314], [0.7347, 0.2613], [0.3644, 0.2248], [0.1267, 0.2023], [0.0742, 0.3464]]
     - id: backyard
+      alert_group: back yard
       description: in the backyard
       state_entities:
         - name: binary_sensor.occupancy_backyard
@@ -83,36 +97,42 @@ config:
           polygons:
             - [[0.994, 0.4297], [0.7378, 0.2613], [0.3674, 0.2248], [0.4755, 0.1901], [0.7409, 0.2283], [0.9995, 0.3044]]
     - id: computer_desk
+      alert_group: jays office
       description: in jay's office near the computer desk
       cameras:
         - name: eufy1
           polygons:
             - [[0.0003, 0.0713], [0.1585, 0.3334], [0.4101, 0.8697], [0.4062, 0.9991], [0.0, 0.9991]]
     - id: computer_chair
+      alert_group: jays office
       description: in jay's office near the computer chair
       cameras:
         - name: eufy1
           polygons:
             - [[0.4101, 0.8697], [0.243, 0.5046], [0.5152, 0.5413], [0.5113, 0.7963], [0.6165, 0.8138], [0.645, 0.4801], [0.8425, 0.5517], [0.8943, 0.9991], [0.4057, 0.9991]]
     - id: office_door
+      alert_group: jays office
       description: in jay's office near the door
       cameras:
         - name: eufy1
           polygons:
             - [[0.5005, 0.8697], [0.527, 0.3666], [0.6499, 0.4102], [0.6135, 0.8837]]
     - id: bathroom_door
+      alert_group: jays office
       description: in jay's office near the bathroom_door
       cameras:
         - name: eufy1
           polygons:
             - [[0.7619, 0.5884], [0.757, 0.3299], [0.8729, 0.274], [0.8729, 0.8749], [0.7521, 0.854]]
     - id: basement_stairs
+      alert_group: basement
       description: near the basement stairs
       cameras:
         - name: eufy2
           polygons:
             - [[0.5978, 0.9728], [0.6499, 0.6391], [0.8346, 0.4277], [0.7724, 0.9991]]
     - id: basement
+      alert_group: basement
       description: in the basement
       state_entities:
         - name: binary_sensor.occupancy_basement
@@ -122,24 +142,28 @@ config:
           polygons:
             - [[0.6509, 0.6391], [0.8376, 0.4277], [0.8336, 0.2845], [0.3885, 0.2722], [0.3806, 0.5814], [0.1015, 0.5937], [0.0062, 0.8173], [0.0021, 0.9991], [0.5968, 0.985]]
     - id: basement_bar
+      alert_group: basement
       description: near the basement bar
       cameras:
         - name: eufy2
           polygons:
             - [[0.0, 0.8222], [0.1025, 0.5884], [0.3796, 0.578], [0.3904, 0.267], [0.0671, 0.2635], [0.0, 0.2648]]
     - id: left_garage
+      alert_group: courtyard
       description: near the left garage door
       cameras:
         - name: reolink5hd
           polygons:
             - [[0.0004, 0.51], [0.1476, 0.3088], [0.1076, 0.0506], [0.0, 0.1426], [0.0, 0.5116]]
     - id: right_garage
+      alert_group: courtyard
       description: near the right garage door
       cameras:
         - name: reolink5hd
           polygons:
             - [[0.1076, 0.047], [0.1669, 0.0], [0.2547, 0.0], [0.2728, 0.1485], [0.1506, 0.3017]]
     - id: backyard_left
+      alert_group: back yard
       description: in the backyard near the left fence
       state_entities:
         - name: binary_sensor.occupancy_backyard
@@ -150,6 +174,7 @@ config:
             - [[0.0054, 0.7966], [0.175, 0.1638], [0.2321, 0.0], [0.4463, 0.0], [0.4589, 0.3945], [0.4568, 0.4872], [0.4692, 0.9994], [0.4053, 0.9994], [0.3591, 0.3403], [0.3273, 0.4382], [0.2705, 0.9994],
               [0.0023, 0.9994]]
     - id: pavilion
+      alert_group: back yard
       description: near the pavilion
       cameras:
         - name: reolink6
@@ -157,12 +182,14 @@ config:
             - [[0.4692, 0.933], [0.4568, 0.4802], [0.4579, 0.4207], [0.5237, 0.426], [0.5525, 0.4714], [0.7479, 0.4277], [0.9309, 0.4837], [0.8559, 0.9662], [0.824, 0.9802], [0.7952, 0.6532], [0.6944, 0.9504],
               [0.5967, 0.9539], [0.5381, 0.6882]]
     - id: patio
+      alert_group: back yard
       description: patio
       cameras:
         - name: reolink6
           polygons:
             - [[0.8775, 0.9767], [0.9968, 0.9784], [0.9988, 0.2529], [0.9258, 0.2389], [0.9854, 0.3438]]
     - id: backyard_right
+      alert_group: back yard
       description: in the backyard
       state_entities:
         - name: binary_sensor.occupancy_backyard

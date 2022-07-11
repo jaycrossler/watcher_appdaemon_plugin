@@ -1,7 +1,6 @@
 import json
 from string_helpers import *
 from Imagery import Imagery
-from datetime import datetime
 import requests
 import io
 
@@ -26,6 +25,7 @@ class ImageAlert:
         self.memo = None
         self.analysis = None
         self.people = None
+        self.items_of_interest = []
         self.message_text_to_send_to_ha = None
         self.count_of_important_things = 0
 
@@ -45,7 +45,6 @@ class ImageAlert:
 
         try:
             # Local variables:
-            _topic_latest = self.get_setting('routing', 'mqtt_publish_to_for_latest_image')
             _topic = self.get_setting('routing', 'mqtt_publish_to_topic')
 
             _motion_area = get_config_var('type', self.payload_obj, "unknown")
@@ -80,29 +79,11 @@ class ImageAlert:
             # Get the zone names from the camera titles
             self.get_zone_name_from_camera_and_zone()
 
-            # TODO: Cleanup - testing this
-            if self.analysis and len(self.analysis) and 'found' in self.analysis[0] and 'predictions' in self.analysis[0]['found']:
-                person_boxes = []
-                car_boxes = []
-                dog_boxes = []
-                for box in self.analysis[0]['found']['predictions']:
-                    if 'label' in box and box['label'] == 'person' and 'confidence' in box and box['confidence'] > .6:
-                        person_boxes.append(box)
-                    # if 'label' in box and box['label'] in ['car','truck','bus'] and 'confidence' in box and box['confidence'] > .6:
-                    #     car_boxes.append(box)
-                    # if 'label' in box and box['label'] == 'dog' and 'confidence' in box and box['confidence'] > .6:
-                    #     dog_boxes.append(box)
-                for box in person_boxes:
-                    matched_zones = self.what_zones_are_point_from_camera_in(
-                        camera=camera_name,
-                        point=center_of_rect(box, self.image))
-                    if len(matched_zones):
-                        self.zone_id = matched_zones[0].id
-                        self.zone_short_name = matched_zones[0].short_name
-                        self.zone_name = matched_zones[0].description
+            # Organize things found in image, and set better zone name if obvious
+            self.get_items_of_interest_from_analysis(camera_name)
 
             # Build the alert message from what was in the picture
-            _message, _count = self.get_image_contents_from_memo(_people)
+            _message, _count = self.get_image_contents_from_memo()
             _past_tense = "were" if _count > 1 else "was"
 
             # Get the event message
@@ -113,6 +94,75 @@ class ImageAlert:
 
         except KeyError as ex:
             self.log("KeyError {} getting camera {} data: {}...".format(ex, camera_name, payload[0:40]), level="ERROR")
+
+    def get_items_of_interest_from_analysis(self, camera_name):
+        _targets = self.get_setting("recognition", "items_to_watch_for").split(',')
+        _min_conf = self.get_setting("recognition", "min_confidence_to_watch_for")
+        _icon_lookup = self.get_setting("recognition", "people_matcher_icons")
+
+        if self.analysis and len(self.analysis) and 'found' in self.analysis[0] \
+                and 'predictions' in self.analysis[0]['found']:
+
+            best_importance_so_far = 0
+            people_left_to_match = len(self.people)
+
+            # Look through all the predictions within analysis
+            predictions = self.analysis[0]['found']['predictions']
+            for box in predictions:
+                if 'label' in box and 'confidence' in box:
+                    label = box['label']
+                    confidence = box['confidence']
+
+                    # We found a prediction of interest
+                    center = center_of_rect(box, self.image)
+                    matched_zones = self.what_zones_are_point_from_camera_in(camera=camera_name, point=center)
+
+                    # Guess at importance based on confidence and order of the label, and if labels marked key
+                    if label in _targets and confidence > _min_conf:
+                        importance = 1 + (confidence * (1 / (1 + _targets.index(label))))
+                    else:
+                        importance = confidence
+                    finding = {'label': label, 'confidence': confidence, 'importance': importance, 'center': center}
+
+                    # TODO: Should we only match the first zone?
+                    if len(matched_zones):
+                        finding['zone_id'] = matched_zones[0].id
+                        finding['zone_short_name'] = matched_zones[0].short_name
+                        finding['zone_name'] = matched_zones[0].description
+
+                        # Override zone details based on most important thing in image
+                        if importance > best_importance_so_far:
+                            best_importance_so_far = importance
+                            self.zone_id = finding['zone_id']
+                            self.zone_short_name = finding['zone_short_name']
+                            self.zone_name = finding['zone_name']
+
+                    if label == 'person':
+                        finding['icon'] = 'human-greeting'
+                    elif label == 'car':
+                        finding['icon'] = 'car'
+                    elif label == 'dog':
+                        finding['icon'] = 'dog'
+                    elif label == 'bird':
+                        finding['icon'] = 'bird'
+                    elif label == 'fox':
+                        finding['icon'] = 'firefox'
+
+                    # TODO: Maybe there's a better way of matching people to faces?
+                    # Guess that the info from the face matcher aligns to this person
+                    if label == 'person' and people_left_to_match > 0:
+                        people_index = len(self.people)-people_left_to_match
+                        name = self.people[people_index]['name']
+                        people_left_to_match -= 1
+
+                        finding['name'] = name
+
+                        # See if there's an icon for the person's name
+                        if name.lower() in _icon_lookup:
+                            finding['icon'] = _icon_lookup[name.lower()]
+
+                    # Add the item of interest
+                    self.items_of_interest.append(finding)
 
     def what_zones_are_point_from_camera_in(self, camera, point, ):
         zones = []
@@ -156,12 +206,6 @@ class ImageAlert:
                 and 'predictions' in self.analysis[0]['found'] and self.image and self.image.image\
                 and 'url_face_recognizer' in _face_server:
 
-            # Get the boxes where 'person' objects were already found
-            person_boxes = []
-            for box in self.analysis[0]['found']['predictions']:
-                if 'label' in box and box['label'] == 'person' and 'confidence' in box and box['confidence'] > .6:
-                    person_boxes.append(box)
-
             # Convert the image into a set of bytes to send to the recognizer API
             buf = io.BytesIO()
             self.image.image.save(buf, format='JPEG')
@@ -180,6 +224,9 @@ class ImageAlert:
                     self.log('Called face recognizer, found: {}'.format(people))
                 else:
                     self.log("Error accessing face_recognition server", level="ERROR")
+            except requests.exceptions.ConnectionError as ex:
+                self.log("Connection Error accessing face recognizer {}".format(ex))
+
             except ConnectionError as ex:
                 self.log("Connection Error accessing face recognizer {}".format(ex))
 
@@ -192,11 +239,13 @@ class ImageAlert:
                     if name.lower() != "unknown":
                         # If the name is not 'unknown' add it to the list of people if unique
                         if name.title() not in people:
-                            people.append({"name": name.title(), "confidence": 0.6})
+                            confidence = _face_results['confidence'] if 'confidence' in _face_results else 0.6
+                            people.append({"name": name.title(), "confidence": confidence})
 
         return people, _face_results
 
-    def get_image_contents_from_memo(self, faces_list):
+    def get_image_contents_from_memo(self):
+        faces_list = self.people
         memo_from_deepstack = self.memo
         matches = memo_from_deepstack.split(",")
 
@@ -244,33 +293,6 @@ class ImageAlert:
 
         message = ", and ".join(_msg).capitalize()
         return message, people + dogs + cars
-
-    def message_json_to_send_to_ha(self, count_of_current):
-        # Prepare a message in JSON format to send to Home Assistant with useful details
-
-        _dtg_format = self.get_setting('routing', 'dtg_message_format')
-        _dtg_format_short = self.get_setting('routing', 'dtg_message_format_short')
-
-        message = self.message_text_to_send_to_ha
-        # if count_of_current > 1:
-        #     message = "{} [{} current]".format(message, count_of_current)
-
-        _time = datetime.now().strftime(_dtg_format)
-        _short_time = datetime.now().strftime(_dtg_format_short)
-        _priority = 3
-        if count_of_current > 1:
-            _priority = 2
-
-        message_package = {"message": message, "zone": self.zone_short_name,
-                           "time": _time, "short_time": _short_time, "priority": _priority}
-
-        if self.image:
-            message_package['image'] = self.image.web_url
-            message_package['thumbnail'] = self.image.thumbnail_url
-
-        # Send the alert of the full message via MQTT
-        out = json.dumps(message_package)
-        return out
 
     def rectangle_of_interesting_analysis_zones(self):
         min_x = 1000000

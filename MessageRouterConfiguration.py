@@ -22,11 +22,17 @@ class MessageRouterConfiguration:
         'states': {
             'default_occupancy_off_trigger': '5:00'
         },
+        'timeline': {
+            'padding_around_event_groups': 3,
+            'minutes_before_event_group_is_old': 15
+        },
         'zones': [
 
         ],
         'recognition': {
-            'face_server' : {
+            'items_to_watch_for': 'person,car,dog,cat,truck,wolf,bear,bird',  # Order these by most important
+            'min_confidence_to_watch_for': 0.6,
+            'face_server': {
                 'look_for_faces_when_person_confidence_above': .65,
                 'url_face_finder': None,
                 'padding_around_faces': 10,

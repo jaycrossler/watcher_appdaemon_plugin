@@ -15,6 +15,7 @@ class Zone:
         self.off_timer = None
         self.alert_objects = None
         self.expected_objects = None
+        self.alert_group = None
 
         self.add_zone_info_from_settings(zone_settings)
 
@@ -29,6 +30,7 @@ class Zone:
 
         self.id = get_config_var('id', zone_settings, 'unknown')
         self.short_name = get_config_var('short_name', zone_settings, self.id)
+        self.alert_group = get_config_var('alert_group', zone_settings, self.id)
         self.description = get_config_var('description', zone_settings, self.id)
         self.cameras = get_config_var('cameras', zone_settings, [])
         self.state_entities = get_config_var('state_entities', zone_settings, [])

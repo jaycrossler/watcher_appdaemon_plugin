@@ -34,13 +34,21 @@ class Imagery:
         _size = "unknown"
 
         try:
+            # Create the thumbnail directory if it doesn't exist
+            thumbnail_dir = posixpath.join(_save_loc, _thumbnails_subdir)
+            does_dir_exist = os.path.exists(thumbnail_dir)
+            if not does_dir_exist:
+                # Create a new directory because it does not exist
+                os.makedirs(thumbnail_dir)
+
             # Also create a thumbnail
             img = self.image.copy()
             if snip_rectangle:
                 img = self.get_piece_of_image(snip_rectangle, padding=20)
-
             img.thumbnail((_thumbnails_size, _thumbnails_size))
             img.save(fp=_thumbnail_path)
+
+            # Build the web url it was saved to
             self.thumbnail_url = posixpath.join(_web_path_to_images, _thumbnails_subdir, self.file_id)
             _size = img.size
             self.log("Saved a thumbnail to {}".format(_thumbnail_path), level="INFO")

@@ -1,6 +1,8 @@
 import posixpath
 import os
 import yaml
+from datetime import datetime, timedelta
+from operator import itemgetter
 
 
 def extract_face_predictions(analysis):
@@ -73,6 +75,31 @@ def get_config_var(field, holder, default_val=None):
     return holder[field] if field in holder else default_val
 
 
+def max_found(events, field):
+    max_num = 0
+    for event in events:
+        if event[field] > max_num:
+            max_num = event[field]
+    return max_num
+
+
+def max_found_list(events, field):
+    max_num = 0
+    for event in events:
+        if len(event[field]) > max_num:
+            max_num = len(event[field])
+    return max_num
+
+
+def max_sub_list(events, field, sub_field):
+    max_num = 0
+    for event in events:
+        for f_item in event[field]:
+            if f_item[sub_field] > max_num:
+                max_num = f_item[sub_field]
+    return max_num
+
+
 def merge_dictionaries(source, destination):
     # """
     # from: https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
@@ -109,6 +136,61 @@ def load_config_file_node(filename, node, default_val, log):
 
 def clip(val, min_, max_):
     return min_ if val < min_ else max_ if val > max_ else val
+
+
+def should_text_be_black_or_white(rgb):
+    yiq = ((rgb[0]*299)+(rgb[1]*587)+(rgb[2]*114))/1000
+    return 'black' if yiq >= 128 else 'white'
+
+
+def field_1_or_2(arr, field_1, field_2, field_3=None, default=None):
+    if field_1 in arr:
+        return arr[field_1]
+    if field_2 in arr:
+        return arr[field_2]
+    if field_3 and field_3 in arr:
+        return arr[field_3]
+    return default
+
+
+def get_time_ranges(events, _dtg_format, minutes_padding=3):
+
+    start = None
+    end = None
+
+    for ev in events:
+        # Skip if no time information
+        ev_start = date_time(field_1_or_2(ev, 'start', 'start_time', 'time'), _dtg_format)
+        ev_end = date_time(field_1_or_2(ev, 'end', 'end_time', 'time'), _dtg_format)
+
+        # Find the earliest and latest times
+        if not start or ev_start < start:
+            start = ev_start
+        if ev_end and (not end or ev_end > end):
+            end = ev_end
+
+    if minutes_padding:
+        start -= timedelta(minutes=minutes_padding)
+        end += timedelta(minutes=minutes_padding)
+
+    return start.strftime(_dtg_format), end.strftime(_dtg_format)
+
+
+def build_icon_string(event):
+    sorted_analysis = sorted(event.items_of_interest, key=itemgetter('importance'), reverse=True)
+    out = ""
+    for obj in sorted_analysis:
+        title = obj['name'] if 'name' in obj else obj['label']
+        if 'icon' in obj and obj['importance'] > 1:
+            out += "<img src='./{}.png' data='{}' onclick='search_icon(this)' title='{}'>".format(
+                obj['icon'], obj['label'], title.title())
+    return out
+
+
+def date_time(dtg, _dtg_format):
+    if type(dtg) == str:
+        dtg = datetime.strptime(dtg, _dtg_format)
+    return dtg
 
 
 def center_of_rect(box, image=None):

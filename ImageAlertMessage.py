@@ -50,7 +50,7 @@ class ImageAlertMessage:
             image.save_full_sized(save_as_latest=True, snip_rectangle=interesting_rect)
 
             # Post a message just of the URL to the 'latest' topic
-            if image.web_url:
+            if image.web_url and _topic_latest:
                 mqtt_publish(_topic_latest, image.web_url)
                 self.log("Published latest alert to {} - {}".format(_topic_latest, image.web_url), level="INFO")
 
@@ -76,32 +76,6 @@ class ImageAlertMessage:
             motion_area=self.image_alert.motion_area,
             image_alert=self.image_alert
         )
-
-    def send_processed_message(self, mqtt_publish, count_of_current):
-        # Handle messages send from a tool like Blue Iris that contains alert and possibly image data
-
-        try:
-            _topic_latest = self.get_setting('routing', 'mqtt_publish_to_for_latest_image')
-            _topic_ha_alert = self.get_setting('routing', 'mqtt_publish_to_topic')
-
-            # Send the message if it's new
-            # TODO: Incorporate priority and new zones text and content
-            _message_text = self.image_alert.message_text_to_send_to_ha
-
-            if self.image_alert.count_of_important_things > 0:
-                # Send a JSON package of the image alert for HA to use
-                message = self.image_alert.message_json_to_send_to_ha(count_of_current=count_of_current)
-
-                mqtt_publish(_topic_ha_alert, message)
-
-                # Save that it was the last one sent to reduce duplicates
-                self.log("Published to {} - {}".format(_topic_ha_alert, message), level="INFO")
-            else:
-                self.log("Something {} - but empty so not publishing".format(_message_text), level="DEBUG")
-
-        except KeyError as ex:
-            self.log("KeyError problem in handling image message: {}".format(ex), level="ERROR")
-            return None
 
     # =========================================
 
