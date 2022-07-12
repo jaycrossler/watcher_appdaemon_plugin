@@ -125,21 +125,27 @@ class AlertGroup:
         self.move_any_old_events_to_old(seconds_offset=seconds_offset)
 
         # Set the priority of the message
-        _priority = 3
-        if self.number_of_current_events() > 0:
+        _base_priority = 3
+        _people_priority = round(len(event.people)/1.75)
+        _current_events = self.number_of_current_events()
+        _current_events_priority = -2 if _current_events > 1 else 0
+
+        _priority = _base_priority + _people_priority + _current_events_priority
+        if _current_events > 2:
             # This isn't the first event in the group - build the priority based on other sub events
-            _priority -= 1
 
-            # More people were seen then before
-            if max_found_list(self.events, 'people') < len(event.people):
+            current_event = self.events[-1:]
+            last_events = self.events[:-1]
+
+            _previous_people = max_in_list_of_ioi(last_events, 'person')
+            _current_people = max_in_list_of_ioi(current_event, 'person')
+            if _current_people > _previous_people:
                 _priority += 1
 
-            # If confidence that it was a person went up 20% - likely wont jump 20% better than ever
-            # TODO: Change to 20% better than last alert
-            if max_sub_list(self.events, 'people', 'confidence') + .20 < max_found(event.people, 'confidence'):
+            _previous_cars = max_in_list_of_ioi(last_events, 'car')
+            _current_cars = max_in_list_of_ioi(current_event, 'car')
+            if _current_cars > _previous_cars:
                 _priority += 1
-
-        # TODO: Adjust priority, add more if more people or better image
 
         # Adjust time (used for testing to set an event in the past)
         time_to_use = datetime.now()

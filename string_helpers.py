@@ -83,6 +83,18 @@ def max_found(events, field):
     return max_num
 
 
+def max_in_list_of_ioi(events, field):
+    max_previously_seen = 0
+    for ev in events:
+        seen = 0
+        for poi in ev['items_of_interest']:
+            if poi['label'] == field:
+                seen += 1
+        if seen > max_previously_seen:
+            max_previously_seen = seen
+    return max_previously_seen
+
+
 def max_found_list(events, field):
     max_num = 0
     for event in events:
