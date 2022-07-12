@@ -61,12 +61,12 @@
 
 
    #searchbar{
-     padding: 15px;
-     border-radius: 10px;
+     padding: 0px 10px;
+     border-radius: 5px;
    }
 
    input[type=text] {
-      width: 20%;
+      width: 100px;
       -webkit-transition: width 0.15s ease-in-out;
       transition: width 0.15s ease-in-out;
    }
@@ -78,20 +78,29 @@
    }
 
    .pressed { background-color: gray; border: 1px solid black;}
+   .tag_shown { background-color: lightblue; }
 
       </style>
 
   </head>
 
-  <body>
+  <body onload="initialize()">
     <div id="title_bar">
+      [Areas: <button id="toggle_all_groups" onclick="toggle_all_groups(this)" oninput="toggle_all_groups(this)">Active</button>]
+      <span id="tag_bar"></span>
       <input id="searchbar" onkeyup="search_events()" type="text" name="search" placeholder="Search.."/>
-      <button id="show_all_groups" onclick="show_all_groups()" oninput="show_all_groups()">Show All Groups</button>
+
     </div>
 
     <div id="visualization"></div>
 
     <script type="text/javascript">
+      var hidden_content = '';
+      var content_to_show = 'images';
+      var priorities_to_show = 2;
+      var priorities_buttons = [];
+      var tag_buttons = [];
+
       // DOM element where the Timeline will be attached
       var container = document.getElementById("visualization");
 
@@ -145,9 +154,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,person,car,driveway",
+    "priority": 2,
     "title": "A Person Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:03:07"
+    "start": "12/07/2022 06:46:55"
   },
   {
     "id": "1.2.2",
@@ -156,9 +166,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,Jay,driveway",
+    "priority": 4,
     "title": "Jay Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:13:07"
+    "start": "12/07/2022 06:56:55"
   },
   {
     "id": "1.2.3",
@@ -167,9 +178,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,person,Jay,Jackie,driveway",
+    "priority": 3,
     "title": "Jay, Jackie Were Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:17:07"
+    "start": "12/07/2022 07:00:55"
   },
   {
     "id": "1.2.4",
@@ -178,9 +190,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,person,person,Jay,Jackie,Julian,driveway",
+    "priority": 3,
     "title": "Jay, Jackie, Julian Were Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:21:07"
+    "start": "12/07/2022 07:04:56"
   },
   {
     "id": "1.2.5",
@@ -189,9 +202,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,person,car,driveway",
+    "priority": 2,
     "title": "A Person Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:23:07"
+    "start": "12/07/2022 07:06:56"
   },
   {
     "id": "bg-1",
@@ -199,8 +213,8 @@
     "className": "bg1",
     "type": "background",
     "group": 1,
-    "start": "10/07/2022 21:00:07",
-    "end": "10/07/2022 21:26:07"
+    "start": "12/07/2022 06:43:55",
+    "end": "12/07/2022 07:09:56"
   },
   {
     "id": "1.1.1",
@@ -209,9 +223,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,person,car,driveway",
+    "priority": 2,
     "title": "A Person Was Seen In The Driveway<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 20:33:06"
+    "start": "12/07/2022 06:16:55"
   },
   {
     "id": "bg-1.1",
@@ -219,8 +234,8 @@
     "className": "bg1-1",
     "type": "background",
     "group": 1,
-    "start": "10/07/2022 20:30:06",
-    "end": "10/07/2022 20:36:06"
+    "start": "12/07/2022 06:13:55",
+    "end": "12/07/2022 06:19:55"
   },
   {
     "id": "3.1.1",
@@ -229,9 +244,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,person,car,deck",
+    "priority": 2,
     "title": "A Person Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:18:07"
+    "start": "12/07/2022 07:01:56"
   },
   {
     "id": "3.1.2",
@@ -240,9 +256,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,person,Jay,Jackie,deck",
+    "priority": 4,
     "title": "Jay, Jackie Were Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:19:01"
+    "start": "12/07/2022 07:02:50"
   },
   {
     "id": "3.1.3",
@@ -251,9 +268,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,Jackie,deck",
+    "priority": 2,
     "title": "Jackie Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:19:37"
+    "start": "12/07/2022 07:03:26"
   },
   {
     "id": "3.1.4",
@@ -262,9 +280,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,Jackie,deck",
+    "priority": 2,
     "title": "Jackie Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:21:01"
+    "start": "12/07/2022 07:04:50"
   },
   {
     "id": "3.1.5",
@@ -273,9 +292,10 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,car,person,Jackie,deck",
+    "priority": 2,
     "title": "Jackie Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:22:01"
+    "start": "12/07/2022 07:05:50"
   },
   {
     "id": "3.1.6",
@@ -284,25 +304,25 @@
     "content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "original_content": "<img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "tags": "chair,car,tennis racket,person,car,deck",
+    "priority": 2,
     "title": "A Person Was Seen On The Deck<br/><img src='../test/thumbnails/annke1hd.20220620_203416.0.3-1.jpg' />",
     "type": "point",
-    "start": "10/07/2022 21:23:08"
+    "start": "12/07/2022 07:06:56"
   },
   {
     "id": "bg-3",
-    "content": "<img src='./human-male.png' data='person' onclick='search_icon(this)' title='Jay'><img src='./human-female.png' data='person' onclick='search_icon(this)' title='Jackie'><img src='./car.png' data='car' onclick='search_icon(this)' title='Car'>",
+    "content": "<img src='./human-greeting.png' data='person' onclick='search_icon(this)' title='Person'><img src='./car.png' data='car' onclick='search_icon(this)' title='Car'>",
     "className": "bg3",
     "type": "background",
     "group": 3,
-    "start": "10/07/2022 21:15:07",
-    "end": "10/07/2022 21:26:08"
+    "start": "12/07/2022 06:58:56",
+    "end": "12/07/2022 07:09:56"
   }
 ]
       );
 
       // Configuration for the Timeline
-      var options = {"start": "10/07/2022 20:27:06", "end": "10/07/2022 21:29:08",
-       "tooltip": {"followMouse": true, "overflowMethod": "cap"}, showCurrentTime: true};
+      var options = {"start": "12/07/2022 06:10:55", "end": "12/07/2022 07:12:56", "tooltip": {"followMouse": true, "overflowMethod": "cap"}};
 
       // Create a Timeline
       var timeline = new vis.Timeline(container);
@@ -310,7 +330,7 @@
       timeline.setGroups(groups);
       timeline.setItems(items);
 
-      <!-- Add a click handler to all title icons     -->
+      <!-- Add a click handler to all title icons to search on the title -->
       timeline.on('click', function (properties) {
           el = properties.event.srcElement;
           if (el.className == 'vis-item-overflow'){
@@ -318,34 +338,209 @@
           } else {
             search_events(el.title);
           }
-          document.getElementById('searchbar').value = el.title;
       });
 
       function search_events(input){
-         if (typeof(input) == "undefined") {
-           let input = document.getElementById('searchbar').value;
-         }
-
+        if (typeof(input) == "undefined") {
+         input = document.getElementById('searchbar').value;
+        } else {
+         document.getElementById('searchbar').value = input;
+        }
+        if (input && input.toLowerCase) {
          input = input.toLowerCase();
-         items.forEach(function (item, properties, senderId) {
-          if (item && item.tags && item.type && item.type != "background") {
+        } else {
+         input = ''
+        }
+        items.forEach(function (item, properties, senderId) {
+          if (item && item.tags && item.type && item.type != "background" ) {
+
             tags = item.tags.toLowerCase();
-            if (tags.indexOf(input) >= 0) {
-              item.content = item.original_content;
+            if (tags.indexOf(input) >= 0 && item.priority && item.priority >= priorities_to_show) {
+              if (content_to_show == 'images') {
+                item.content = item.original_content;
+              } else if (content_to_show == 'priorities') {
+                item.content = "[" + item.priority + "]";
+              }
+
             } else {
-              item.content = 'x';
+              item.content = hidden_content;
             }
           }
-         });
-         timeline.setItems(items);
+        });
+        timeline.setItems(items);
+
+        //Highlight tag buttons
+        for(var i=0; i<tag_buttons.length; ++i) {
+          var shown = false;
+          var el = tag_buttons[i];
+          if (el.innerText == "All" && input == "") {
+            el.classList.add("tag_shown");
+            shown = true;
+          } else if (el.innerText.toLowerCase() == input) {
+            el.classList.add("tag_shown");
+            shown = true;
+          }
+
+          if (!shown) {
+            el.classList.remove("tag_shown");
+          }
+        }
+
       }
 
-      function show_all_groups() {
-        groups.forEach(function (item, properties, senderId) {
-          item.visible=true;
+      function toggle_all_groups(el) {
+        if (el.innerText == "All") {
+          el.innerText = "Active";
+          show_active_groups(true);
+        } else {
+          el.innerText = "All";
+          show_active_groups(false);
+        }
+      }
+
+      function show_active_groups(show_all=false) {
+        groups.forEach(function (group, g_properties, g_senderId) {
+
+          if (show_all) {
+            var group_visible = false;
+            items.forEach(function (item, properties, senderId) {
+              if (item.group == group.id) {
+                  group_visible = true;
+                  return;
+              }
+            });
+          } else {
+            group_visible = true;
+          }
+
+          if (group_visible) {
+            if (group.visible == false) {
+              groups.update({id: group.id, visible:true});
+            }
+          } else {
+            if (group.visible == true) {
+              groups.update({id: group.id, visible:false});
+            }
+          }
         });
         timeline.setGroups(groups);
       }
+
+      function initialize(){
+        build_tag_bar();
+        search_events('');
+      }
+
+      function build_tag_bar(){
+        var tags = [];
+        items.forEach(function (item, properties, senderId) {
+          if (item.tags) {
+            tag_list = item.tags.split(",");
+            tags = tags.concat(tag_list);
+          }
+        })
+        if (tags.length == 0) return;
+
+        tags = arrayUnique(tags);
+        tags = arrayCapFirst(tags);
+
+        //Build a tag button for each
+        var holder = document.getElementById('tag_bar');
+        holder.appendChild(document.createTextNode("[Tags:"));
+
+        var tag = document.createElement('button');
+        tag.onclick = function(){search_events('');}
+        tag.oninput = function(){search_events('');}
+        tag.innerText = 'All';
+        holder.appendChild(tag);
+        tag_buttons = [];
+        tag_buttons.push(tag);
+
+        var tags_shown = tags.length;
+        if (tags_shown>7) {
+          tags_shown=7;
+        }
+        for(var i=0; i<tags_shown; ++i) {
+          var tag = document.createElement('button');
+          tag.onclick = function(){search_events(this.innerText);}
+          tag.oninput = function(){search_events(this.innerText);}
+          tag.innerText = tags[i];
+          holder.appendChild(tag);
+          tag_buttons.push(tag);
+        }
+        holder.appendChild(document.createTextNode("] [Priorities:"));
+
+        // Build the priorities buttons
+        for(var i=0; i<5; ++i) {
+          var tag = document.createElement('button');
+          tag.onclick = function(){search_priorities(this.innerText);}
+          tag.oninput = function(){search_priorities(this.innerText);}
+          if (i >= priorities_to_show) {
+            tag.classList.add("tag_shown");
+          }
+          tag.innerText = i;
+          holder.appendChild(tag);
+          priorities_buttons.push(tag);
+        }
+        holder.appendChild(document.createTextNode("]"));
+
+        var tag = document.createElement('button');
+        tag.onclick = function(){show_images(this);}
+        tag.oninput = function(){show_images(this);}
+        tag.innerText = '[Show Images]';
+        holder.appendChild(tag);
+      }
+
+      function show_images(el){
+        if (el.innerText == '[Show Images]') {
+          el.innerText = '[Show Priorities]';
+          content_to_show = 'priorities';
+          search_events('');
+        } else {
+          el.innerText = '[Show Images]';
+          content_to_show = 'images';
+          search_events('');
+        }
+      }
+
+      function search_priorities(input){
+         input = parseInt(input);
+         priorities_to_show = input;
+         for(var i=0; i<5; ++i) {
+           var el = priorities_buttons[i];
+           if (i >= priorities_to_show) {
+             el.classList.add("tag_shown");
+           } else {
+             el.classList.remove("tag_shown");
+           }
+         }
+         search_events('');
+      }
+
+
+      function arrayUnique(array) {
+          var a = array.concat();
+          for(var i=0; i<a.length; ++i) {
+              for(var j=i+1; j<a.length; ++j) {
+                  if(a[i] === a[j])
+                      a.splice(j--, 1);
+              }
+          }
+          return a;
+      }
+      function arrayCapFirst(array) {
+          var a = array.concat();
+          var b = [];
+          for(var i=0; i<a.length; ++i) {
+              var firstLetter = a[i][0];
+              if (firstLetter.toUpperCase() == firstLetter) {
+                b.push(a[i]);
+                a.splice(i--, 1);
+              }
+          }
+          return b.concat(a);
+      }
+
     </script>
 
 <!--    <i class="mdi mdi-cloud"></i>-->

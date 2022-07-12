@@ -199,6 +199,7 @@ class AlertGroup:
               'content': content,
               'original_content': content,
               'tags': tags,
+              'priority': event['priority'],
               'title': "{}<br/><img src='{}' />".format(event['message'].title(), event['thumbnail']),
               'type': 'point',
               'start': self._date_in_timeline_format(event['time'])}
